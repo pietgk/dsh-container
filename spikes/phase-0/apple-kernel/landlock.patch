@@ -1,0 +1,23 @@
+diff --git a/kernel/config-arm64 b/kernel/config-arm64
+index 429535b..6499d14 100644
+--- a/kernel/config-arm64
++++ b/kernel/config-arm64
+@@ -3582,15 +3582,16 @@ CONFIG_PERSISTENT_KEYRINGS=y
+ # CONFIG_ENCRYPTED_KEYS is not set
+ # CONFIG_KEY_DH_OPERATIONS is not set
+ # CONFIG_SECURITY_DMESG_RESTRICT is not set
+-# CONFIG_SECURITY is not set
++CONFIG_SECURITY=y
+ CONFIG_SECURITYFS=y
++CONFIG_SECURITY_LANDLOCK=y
+ CONFIG_HAVE_HARDENED_USERCOPY_ALLOCATOR=y
+ # CONFIG_HARDENED_USERCOPY is not set
+ CONFIG_FORTIFY_SOURCE=y
+ # CONFIG_STATIC_USERMODEHELPER is not set
+ # CONFIG_IMA_SECURE_AND_OR_TRUSTED_BOOT is not set
+ CONFIG_DEFAULT_SECURITY_DAC=y
+-CONFIG_LSM="yama,loadpin,safesetid,integrity"
++CONFIG_LSM="landlock,yama,loadpin,safesetid,integrity"
+ 
+ #
+ # Kernel hardening options

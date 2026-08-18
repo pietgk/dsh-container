@@ -1,0 +1,15 @@
+dist/
+node_modules/
+.state/
+workspaces/
+.direnv/
+result
+playwright-report/
+test-results/
+*.log
+*.env
+.env.*
+!.env.example
+
+# The verified kernel is distributed as a digest-pinned GitHub release asset.
+spikes/phase-0/apple-kernel/vmlinux-arm64
