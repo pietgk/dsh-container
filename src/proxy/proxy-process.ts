@@ -56,9 +56,8 @@ export async function stopProxyProcess(record: InstanceRecord, paths: ManagerPat
   const pid = record.ui.proxyPid
   if (pid === null) return
   const command = await processCommand(pid)
-  const expected = `internal-proxy --name ${record.name}`
   if (command === null) return
-  if (!command.includes(expected) || !command.includes(`--home ${paths.root}`)) {
+  if (!proxyCommandMatches(command, record, paths)) {
     throw new Error(
       `refusing to signal PID ${String(pid)} because its command identity does not match`,
     )
@@ -68,7 +67,7 @@ export async function stopProxyProcess(record: InstanceRecord, paths: ManagerPat
   while (await processExists(pid)) {
     if (Date.now() >= deadline) {
       const current = await processCommand(pid)
-      if (current?.includes(expected) !== true) {
+      if (current === null || !proxyCommandMatches(current, record, paths)) {
         throw new Error(`proxy PID ${String(pid)} changed identity during shutdown`)
       }
       process.kill(pid, 'SIGKILL')
@@ -84,10 +83,7 @@ export async function proxyProcessMatches(
 ): Promise<boolean> {
   if (record.ui.proxyPid === null) return false
   const command = await processCommand(record.ui.proxyPid)
-  return (
-    command?.includes(`internal-proxy --name ${record.name}`) === true &&
-    command.includes(`--home ${paths.root}`)
-  )
+  return command !== null && proxyCommandMatches(command, record, paths)
 }
 
 async function waitForReadyLine(
@@ -138,6 +134,28 @@ async function processCommand(pid: number): Promise<string | null> {
       resolve(code === 0 ? Buffer.concat(output).toString('utf8').trim() : null),
     )
   })
+}
+
+function proxyCommandMatches(command: string, record: InstanceRecord, paths: ManagerPaths): boolean {
+  return (
+    hasExactArgument(command, 'internal-proxy') &&
+    hasExactOptionValue(command, '--name', record.name) &&
+    hasExactOptionValue(command, '--home', paths.root)
+  )
+}
+
+function hasExactArgument(command: string, value: string): boolean {
+  return new RegExp(`(?:^|\\s)${escapeRegex(value)}(?:\\s|$)`).test(command)
+}
+
+function hasExactOptionValue(command: string, option: string, value: string): boolean {
+  return new RegExp(
+    `(?:^|\\s)${escapeRegex(option)}(?:\\s+|=)${escapeRegex(value)}(?:\\s|$)`,
+  ).test(command)
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 async function processExists(pid: number): Promise<boolean> {
