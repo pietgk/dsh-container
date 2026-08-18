@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DSH evidence and gates</title>
+  <style>
+    :root { color-scheme: light; --bg:#f4f6f8; --surface:#fff; --ink:#101318; --muted:#626a75; --line:rgba(16,19,24,.12); --blue:#3468dc; --blue-soft:#e7eefc; --green:#168a4c; --green-soft:#e8f8ef; --amber:#b96b00; --amber-soft:#fff3df; --red:#d22d36; --red-soft:#fff0f1; --violet:#7455dc; --violet-soft:#f0ecff; --shadow:0 18px 58px rgba(16,19,24,.07); --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; --code:"SF Mono",Menlo,monospace; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); font-family:var(--ui); background:radial-gradient(circle at 92% 0%,rgba(52,104,220,.11),transparent 31rem),var(--bg); }
+    :where(.grid,.hero,.cards)>* { min-width:0; }
+    :where(h1,h2,h3,p,li,td,th,code,span) { overflow-wrap:anywhere; }
+    main { width:min(1180px,calc(100% - 32px)); margin:auto; padding:28px 0 72px; }
+    .top { display:flex; justify-content:space-between; gap:16px; color:var(--muted); font:12px/1.5 var(--code); }
+    .hero { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(260px,.55fr); gap:24px; margin-top:22px; padding:38px; border:1px solid rgba(255,255,255,.7); border-radius:24px; background:var(--surface); box-shadow:var(--shadow); }
+    .kicker { color:var(--blue); font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { margin:10px 0 14px; font-size:clamp(38px,5.4vw,66px); line-height:.98; letter-spacing:-.05em; }
+    .lead { margin:0; color:var(--muted); font-size:17px; line-height:1.65; }
+    .verdict { padding:20px; border:1px solid rgba(52,104,220,.22); border-radius:16px; background:var(--blue-soft); }
+    .verdict strong { display:block; margin-bottom:8px; color:var(--blue); font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+    .verdict p { margin:0; font-size:14px; line-height:1.55; }
+    section { margin-top:48px; }
+    h2 { margin:0 0 16px; font-size:28px; letter-spacing:-.035em; }
+    .panel { padding:24px; border:1px solid var(--line); border-radius:20px; background:var(--surface); box-shadow:0 8px 30px rgba(16,19,24,.03); overflow-x:auto; }
+    .mermaid { min-width:860px; }
+    .cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .card { padding:20px; border:1px solid var(--line); border-radius:16px; background:var(--surface); }
+    .card h3 { margin:0 0 7px; font-size:16px; }
+    .card p { margin:0; color:var(--muted); font-size:13px; line-height:1.55; }
+    .card.good { background:var(--green-soft); border-color:rgba(22,138,76,.25); }
+    .card.warn { background:var(--amber-soft); border-color:rgba(185,107,0,.26); }
+    .card.fail { background:var(--red-soft); border-color:rgba(210,45,54,.24); }
+    .badge { display:inline-flex; margin-bottom:10px; padding:5px 8px; border-radius:99px; background:#fff; font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+    .good .badge { color:var(--green); } .warn .badge { color:var(--amber); } .fail .badge { color:var(--red); }
+    table { width:100%; min-width:820px; border-collapse:collapse; }
+    th,td { padding:13px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; font-size:12px; line-height:1.5; }
+    th { color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+    td:first-child { color:var(--ink); font-weight:750; }
+    code { font-family:var(--code); }
+    .status { display:inline-flex; padding:4px 7px; border-radius:99px; white-space:nowrap; font-weight:750; }
+    .p1 { color:var(--red); background:var(--red-soft); } .p2 { color:var(--amber); background:var(--amber-soft); } .trigger { color:var(--violet); background:var(--violet-soft); }
+    footer { display:flex; justify-content:space-between; gap:16px; margin-top:34px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font:11px/1.5 var(--code); }
+    @media(max-width:860px){ .hero,.cards{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="top"><b>DSH CONTAINER EVALUATION</b><span>Evidence classes, browser alternatives, and remaining gates</span></div>
+    <header class="hero">
+      <div><span class="kicker">Decision map</span><h1>What can each driver actually prove?</h1><p class="lead">Functional success, rendered correctness, official browser interaction, diagnostics, and human confirmation are separate claims. The evaluation records the strongest class achieved without silently promoting a fallback.</p></div>
+      <aside class="verdict"><strong>Rule of judgement</strong><p>The Web API proved the four real-model scenarios. It did not prove their rendered transcripts. Playwright now owns repeatable visual evidence; official Browser owns interactive review.</p></aside>
+    </header>
+
+    <section><h2>Evidence topology</h2><div class="panel"><pre class="mermaid">
+flowchart TD
+  S["Scenario declares required evidence"] --> F["Functional driver<br/>CLI / API / protocol"]
+  S --> V["Visual automation<br/>Pinned Playwright Chromium"]
+  S --> I["Official interaction<br/>In-app Browser or connected Chrome"]
+  S --> D["Diagnostic fallback<br/>Chrome DevTools"]
+  S --> H["Human confirmation"]
+  F --> FR["functional"]
+  V --> VR["visual-automated"]
+  I --> IR["interactive"]
+  D --> DR["diagnostic"]
+  H --> HR["human-confirmed"]
+  X["Required capability absent"] --> BR["blocked"]
+  FR -. "never upgrades" .-> VR
+  DR -. "never upgrades" .-> IR
+  HR -. "supplements" .-> VR
+  classDef blue fill:#e7eefc,stroke:#3468dc,color:#101318;
+  classDef green fill:#e8f8ef,stroke:#168a4c,color:#101318;
+  classDef amber fill:#fff3df,stroke:#b96b00,color:#101318;
+  classDef red fill:#fff0f1,stroke:#d22d36,color:#101318;
+  class S,V,I blue; class F,FR,VR,IR green; class D,H,DR,HR amber; class X,BR red;
+    </pre></div></section>
+
+    <section><h2>The browser-control alternatives</h2><div class="cards">
+      <article class="card good"><span class="badge">Repeatable gate</span><h3>Playwright</h3><p>Read-only shell, credential indicator, controlled transcript, reload, fatal console errors, and screenshots at 1440x900 and 1024x768.</p></article>
+      <article class="card warn"><span class="badge">Interactive path</span><h3>Official Browser</h3><p>Use an in-app Browser or Chrome connected through Settings → Computer use. If neither exists, interactive evidence remains blocked.</p></article>
+      <article class="card fail"><span class="badge">Qualified fallback</span><h3>Web API or diagnostics</h3><p>The API proves functionality. Chrome DevTools can diagnose rendering. Neither may be reported as official interactive review.</p></article>
+    </div></section>
+
+    <section><h2>Open gates and triggers</h2><div class="panel"><table><thead><tr><th>Work</th><th>Class</th><th>Exit condition</th></tr></thead><tbody>
+      <tr><td>Visual transcript acceptance</td><td><span class="status p1">P1 debt</span></td><td>Playwright screenshots and semantic checks pass; official connection recorded separately.</td></tr>
+      <tr><td>Selective persistent deletion</td><td><span class="status p1">P1 debt</span></td><td>Exact preview, confirmation, ownership check, and deletion tests for every persistent target.</td></tr>
+      <tr><td>Apple service and resource failure tests</td><td><span class="status p1">P1 debt</span></td><td>No orphan children; throttling, OOM, shutdown, and recovery evidence recorded.</td></tr>
+      <tr><td>Multiplexed guest bridge</td><td><span class="status p2">P2 hardening</span></td><td>Required before multi-user or product-scale traffic.</td></tr>
+      <tr><td>Volume workspace and backup</td><td><span class="status trigger">Trigger</span></td><td>Required before unfamiliar repositories or parallel autonomous jobs.</td></tr>
+      <tr><td>Restricted provider egress</td><td><span class="status trigger">Trigger</span></td><td>Direct-IP and DNS bypass resistance proven from inside the guest.</td></tr>
+      <tr><td>Colima or E2B backend</td><td><span class="status trigger">Trigger</span></td><td>Remote execution, stronger cloud disposal, or service operation becomes a real requirement.</td></tr>
+    </tbody></table></div></section>
+
+    <footer><span>Sources: accepted specification, Phase 3 record, evidence policy, gap register</span><span>Design source: existing DSH architecture-atlas visual language</span></footer>
+  </main>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({startOnLoad:true,theme:dark?'dark':'base',securityLevel:'loose',flowchart:{curve:'basis',htmlLabels:true,useMaxWidth:true},themeVariables:dark?{}:{fontFamily:'-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',primaryColor:'#e7eefc',primaryTextColor:'#101318',primaryBorderColor:'#3468dc',lineColor:'#7a8492',secondaryColor:'#f0ecff',tertiaryColor:'#e8f8ef',clusterBkg:'#f8fafc',clusterBorder:'#cbd2dc'}});
+  </script>
+</body>
+</html>

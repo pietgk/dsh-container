@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DSH Container architecture atlas</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --font-code: "SF Mono", "JetBrains Mono", Menlo, monospace;
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --soft: #f8fafc;
+      --ink: #101318;
+      --muted: #626a75;
+      --faint: #858d98;
+      --line: rgba(16, 19, 24, .11);
+      --blue: #3468dc;
+      --blue-soft: #e7eefc;
+      --violet: #7455dc;
+      --violet-soft: #f0ecff;
+      --green: #168a4c;
+      --green-soft: #e8f8ef;
+      --amber: #b96b00;
+      --amber-soft: #fff3df;
+      --red: #d22d36;
+      --red-soft: #fff0f1;
+      --shadow: 0 18px 58px rgba(16, 19, 24, .07);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--bg); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--font-ui);
+      background:
+        radial-gradient(circle at 92% 0%, rgba(52,104,220,.11), transparent 31rem),
+        radial-gradient(circle at 4% 32%, rgba(116,85,220,.07), transparent 27rem),
+        var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    :where(.atlas-grid, .atlas-split, .atlas-three, .atlas-hero, .atlas-heading) > * { min-width: 0; }
+    :where(p, li, td, th, code, span, label, h1, h2, h3) { overflow-wrap: anywhere; }
+    code, .mono { font-family: var(--font-code); }
+    .atlas-shell { width: min(1260px, calc(100% - 32px)); margin: 0 auto; padding: 26px 0 88px; }
+    .atlas-topbar { display: flex; justify-content: space-between; gap: 16px; color: var(--faint); font: 12px/1.4 var(--font-code); }
+    .atlas-wordmark { color: var(--ink); font-weight: 750; letter-spacing: .09em; }
+    .atlas-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(280px, .65fr);
+      gap: 30px;
+      margin-top: 22px;
+      padding: 42px;
+      border: 1px solid rgba(255,255,255,.7);
+      border-radius: 26px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .atlas-kicker { color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 10px 0 16px; max-width: 830px; font-size: clamp(40px, 5.6vw, 70px); line-height: .98; letter-spacing: -.052em; }
+    .atlas-lead { margin: 0; max-width: 800px; color: var(--muted); font-size: 18px; line-height: 1.65; }
+    .atlas-one-line { align-self: start; padding: 20px; border: 1px solid rgba(52,104,220,.2); border-radius: 16px; background: var(--blue-soft); }
+    .atlas-one-line strong { display: block; margin-bottom: 8px; color: var(--blue); font-size: 12px; letter-spacing: .07em; text-transform: uppercase; }
+    .atlas-one-line p { margin: 0; font-size: 14px; line-height: 1.55; }
+    .atlas-state {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      margin-top: 18px;
+      padding: 15px 18px;
+      border: 1px solid rgba(185,107,0,.28);
+      border-radius: 14px;
+      background: var(--amber-soft);
+    }
+    .atlas-state b { font-size: 13px; }
+    .atlas-state span { color: var(--muted); font-size: 12px; }
+    .atlas-pill { padding: 6px 9px; border-radius: 999px; color: var(--amber); background: #fff; font: 750 11px/1 var(--font-ui); text-transform: uppercase; white-space: nowrap; }
+    .atlas-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 44px; }
+    .atlas-nav a { padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.82); text-decoration: none; font-size: 12px; }
+    .atlas-nav a:hover { color: var(--ink); border-color: rgba(52,104,220,.35); }
+    .atlas-section { margin-top: 50px; scroll-margin-top: 18px; }
+    .atlas-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, .7fr); gap: 24px; align-items: end; margin-bottom: 16px; }
+    .atlas-step { display: block; margin-bottom: 6px; color: var(--blue); font: 12px/1.4 var(--font-code); }
+    h2 { margin: 0; font-size: 29px; letter-spacing: -.035em; }
+    .atlas-heading p { margin: 0; color: var(--faint); font-size: 13px; line-height: 1.55; text-align: right; }
+    .atlas-panel { min-width: 0; padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 8px 30px rgba(16,19,24,.03); }
+    .atlas-diagram { overflow-x: auto; }
+    .atlas-diagram .mermaid { min-width: 900px; }
+    .atlas-caption { margin: 14px 2px 0; color: var(--faint); font-size: 12px; line-height: 1.55; }
+    .atlas-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .atlas-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .atlas-card { min-width: 0; padding: 21px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+    .atlas-card h3 { margin: 0 0 8px; font-size: 17px; }
+    .atlas-card p, .atlas-card li { color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .atlas-card p { margin: 0; }
+    .atlas-card ul { margin: 9px 0 0; padding-left: 19px; }
+    .atlas-card.good { border-color: rgba(22,138,76,.26); background: var(--green-soft); }
+    .atlas-card.warn { border-color: rgba(185,107,0,.28); background: var(--amber-soft); }
+    .atlas-card.fail { border-color: rgba(210,45,54,.25); background: var(--red-soft); }
+    .atlas-badge { display: inline-flex; margin-bottom: 11px; padding: 5px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    .good .atlas-badge { color: var(--green); background: #fff; }
+    .warn .atlas-badge { color: var(--amber); background: #fff; }
+    .fail .atlas-badge { color: var(--red); background: #fff; }
+    .atlas-callout { margin-top: 14px; padding: 15px 17px; border-left: 3px solid var(--blue); border-radius: 0 12px 12px 0; background: var(--blue-soft); color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .atlas-callout strong { color: var(--blue); }
+    .atlas-table-wrap { overflow-x: auto; }
+    table { width: 100%; min-width: 780px; border-collapse: collapse; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 12px; line-height: 1.5; }
+    th { color: var(--faint); font-weight: 750; text-transform: uppercase; letter-spacing: .05em; }
+    td { color: var(--muted); }
+    td:first-child { color: var(--ink); font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    .atlas-status { display: inline-flex; padding: 4px 7px; border-radius: 999px; white-space: nowrap; font-weight: 750; }
+    .atlas-status.pass { color: var(--green); background: var(--green-soft); }
+    .atlas-status.fail { color: var(--red); background: var(--red-soft); }
+    .atlas-status.wait { color: var(--amber); background: var(--amber-soft); }
+    .atlas-evidence { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+    .atlas-hash { padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); }
+    .atlas-hash strong { display: block; margin-bottom: 5px; font-size: 12px; }
+    .atlas-hash code { display: block; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .atlas-verdict { margin-top: 54px; padding: 30px; border: 1px solid rgba(52,104,220,.25); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); }
+    .atlas-verdict > h2 { margin-bottom: 8px; }
+    .atlas-verdict > p { margin: 0 0 22px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .atlas-question { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 15px; background: var(--soft); }
+    .atlas-question fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+    .atlas-question legend { margin-bottom: 12px; font-size: 14px; font-weight: 750; }
+    .atlas-choice { display: flex; gap: 9px; align-items: flex-start; margin-top: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: #fff; cursor: pointer; }
+    .atlas-choice input { flex: 0 0 auto; margin-top: 2px; accent-color: var(--blue); }
+    .atlas-choice span { color: var(--muted); font-size: 12px; line-height: 1.48; }
+    .atlas-choice b { display: block; margin-bottom: 3px; color: var(--ink); }
+    .atlas-button { margin-top: 12px; padding: 11px 15px; border: 0; border-radius: 10px; color: #fff; background: var(--blue); font: 700 13px/1 var(--font-ui); cursor: pointer; }
+    .atlas-note { margin-top: 12px; color: var(--faint); font-size: 11px; line-height: 1.5; }
+    .atlas-footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--faint); font: 11px/1.5 var(--font-code); }
+    @media (max-width: 920px) {
+      .atlas-hero, .atlas-heading, .atlas-three, .atlas-split { grid-template-columns: 1fr; }
+      .atlas-heading p { text-align: left; }
+      .atlas-state { grid-template-columns: auto 1fr; }
+      .atlas-state .atlas-pill { grid-column: 1 / -1; justify-self: start; }
+    }
+    @media (max-width: 620px) {
+      .atlas-shell { width: min(100% - 20px, 1260px); padding-top: 16px; }
+      .atlas-topbar, .atlas-footer { flex-direction: column; }
+      .atlas-hero { padding: 24px; }
+      .atlas-panel, .atlas-verdict { padding: 17px; }
+      .atlas-evidence { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="atlas-shell">
+    <div class="atlas-topbar">
+      <span class="atlas-wordmark">DSH CONTAINER ARCHITECTURE</span>
+      <span>Phase 0 evidence, amended 2026-08-17</span>
+    </div>
+
+    <header class="atlas-hero">
+      <div>
+        <span class="atlas-kicker">Architecture atlas</span>
+        <h1>What are we actually building?</h1>
+        <p class="atlas-lead">A trusted macOS CLI that builds a reproducible DSH image, boots it inside an Apple VM with a pinned Landlock kernel, mounts only four writable areas, and carries the Web UI over a Mac-loopback proxy without exposing DSH on the guest network.</p>
+      </div>
+      <aside class="atlas-one-line">
+        <strong>The mental model</strong>
+        <p>The image is the application filesystem. The custom kernel powers the VM security feature. The container combines that image with per-instance mounts. The CLI owns lifecycle. The proxy is the only inbound path. Gates decide when the next layer may be built.</p>
+      </aside>
+    </header>
+
+    <div class="atlas-state" role="status">
+      <b>Phase 1 is complete and all non-mutating checks pass.</b>
+      <span>The architecture and dependency audit are accepted. Creating the first managed instance now requires live-egress and bind-workspace risk acknowledgement.</span>
+      <span class="atlas-pill">Runtime gate</span>
+    </div>
+
+    <nav class="atlas-nav" aria-label="Architecture drawings">
+      <a href="#whole">1. Whole system</a>
+      <a href="#layers">2. Image, kernel, container</a>
+      <a href="#network">3. Network path</a>
+      <a href="#resources">4. Owned resources</a>
+      <a href="#gates">5. Gates and sequence</a>
+      <a href="#evidence">6. Spike evidence</a>
+      <a href="#verdict">Your verdict</a>
+    </nav>
+
+    <section class="atlas-section" id="whole">
+      <div class="atlas-heading">
+        <div><span class="atlas-step">DRAWING 01</span><h2>The whole system on one page</h2></div>
+        <p>Read left to right: user surfaces on the Mac, trusted manager assets, Apple VM boundary, DSH container, then live outbound Internet.</p>
+      </div>
+      <figure class="atlas-panel atlas-diagram">
+        <pre class="mermaid">
+flowchart LR
+  User([Developer])
+  Internet[(Internet\nmodel providers, registries, packages)]
+
+  subgraph Mac["macOS host"]
+    Browser["Browser\nDSH Web UI"]
+    CLI["dsh-container CLI\ntrusted lifecycle manager"]
+    Nix["Nix dotfiles\ndeclares Apple Container"]
+    Meta[("Manager metadata\naudit, acknowledgements, logs")]
+    Image[("Immutable OCI image\nDSH + runtime closure")]
+    Kernel[("Pinned custom kernel\nLandlock enabled")]
+    Workspace[("Managed workspace\nexact host bind")]
+    Proxy["Mac TCP proxy\n127.0.0.1:host-port"]
+    Apple["Apple Container 1.2.2\nAPI service"]
+
+    subgraph VM["Per-instance lightweight VM"]
+      KRun["Linux 6.18.5\nverified kernel identity"]
+      Net["Dedicated Apple network\noutbound only for DSH"]
+      subgraph C["Non-root, read-only container"]
+        Root["Image rootfs\nimmutable"]
+        DSH["DSH Web + agents\n127.0.0.1:3080"]
+        Conn["Per-connection guest connector"]
+        State[("/state\nsessions + credentials")]
+        Cache[("/cache\nrebuildable")]
+        Tmp[("/tmp\ntmpfs")]
+        WS["/workspace"]
+      end
+    end
+  end
+
+  User --> CLI
+  User --> Browser
+  Nix --> Apple
+  CLI --> Meta
+  CLI --> Apple
+  CLI --> Proxy
+  Apple -->|boots with| Kernel
+  Kernel --> KRun
+  Apple -->|mounts| Image
+  Image --> Root
+  Workspace --> WS
+  WS --> Workspace
+  Browser --> Proxy
+  Proxy ==>|one exec stream per TCP connection| Conn
+  Conn --> DSH
+  DSH --> WS
+  WS --> DSH
+  DSH --> State
+  State --> DSH
+  DSH --> Cache
+  Cache --> DSH
+  DSH --> Tmp
+  Tmp --> DSH
+  DSH --> Net --> Internet
+
+  classDef host fill:#e7eefc,stroke:#3468dc,color:#101318;
+  classDef runtime fill:#f0ecff,stroke:#7455dc,color:#101318;
+  classDef data fill:#e8f8ef,stroke:#168a4c,color:#101318;
+  classDef risk fill:#fff3df,stroke:#b96b00,color:#101318;
+  class CLI,Nix,Proxy,Apple host;
+  class KRun,Root,DSH,Conn runtime;
+  class Meta,Image,Kernel,Workspace,State,Cache,Tmp,WS data;
+  class Net,Internet risk;
+        </pre>
+        <figcaption class="atlas-caption">There are two separate immutable build artifacts: the OCI image supplies the container filesystem, while the kernel boots the VM and makes DSH Landlock enforcement real. Neither replaces the other.</figcaption>
+      </figure>
+    </section>
+
+    <section class="atlas-section" id="layers">
+      <div class="atlas-heading">
+        <div><span class="atlas-step">DRAWING 02</span><h2>Image, kernel, VM, and container are different layers</h2></div>
+        <p>This is the distinction that is easiest to lose when discussing one command called “container run.”</p>
+      </div>
+      <figure class="atlas-panel atlas-diagram">
+        <pre class="mermaid">
+flowchart TB
+  Source["Exact DSH git archive\n99f6f02..."] --> Build["Multi-stage Linux arm64 build\nfrozen pnpm + Web + static landlock-run"]
+  Base["Pinned Node base manifest"] --> Build
+  Build --> Image["OCI image\na9f384b2..."]
+
+  AppleSrc["Apple Containerization 0.40.1\npinned kernel recipe"] --> KBuild["Kernel build\nminimal Landlock patch"]
+  Patch["landlock.patch\n6a2f03ca..."] --> KBuild
+  KBuild --> Kernel["vmlinux-arm64\n5ac12b28..."]
+
+  Image --> Create["Create named instance"]
+  Kernel --> Create
+  Config["Read-only root + UID 1000\ndropped caps + limits + network"] --> Create
+  Mounts["Workspace bind + state volume\ncache volume + tmpfs"] --> Create
+  Create --> VM["Apple lightweight VM"]
+  VM --> Container["Running DSH container"]
+
+  classDef source fill:#e7eefc,stroke:#3468dc,color:#101318;
+  classDef artifact fill:#e8f8ef,stroke:#168a4c,color:#101318;
+  classDef runtime fill:#f0ecff,stroke:#7455dc,color:#101318;
+  class Source,Base,AppleSrc,Patch,Config,Mounts source;
+  class Image,Kernel artifact;
+  class VM,Container runtime;
+        </pre>
+      </figure>
+      <div class="atlas-three">
+        <article class="atlas-card good"><span class="atlas-badge">Image</span><h3>What DSH runs</h3><p>Exact source, built Web UI, runtime packages, Node, and static <code>landlock-run</code>. Shared when every build identity matches.</p></article>
+        <article class="atlas-card good"><span class="atlas-badge">Kernel</span><h3>What enforces Landlock</h3><p>Apple's default kernel returns <code>ENOSYS</code>. The pinned kernel is mandatory for the filesystem sandbox to enforce a denial.</p></article>
+        <article class="atlas-card warn"><span class="atlas-badge">Container instance</span><h3>What gains state</h3><p>The disposable rootfs plus exact mounts, security controls, network, metadata, and proxy ownership. State survives container recreation.</p></article>
+      </div>
+    </section>
+
+    <section class="atlas-section" id="network">
+      <div class="atlas-heading">
+        <div><span class="atlas-step">DRAWING 03</span><h2>The inbound path changed after the spike</h2></div>
+        <p>The failure was in Apple's socket relay visibility, not in DSH, the WebSocket, or the Mac loopback listener.</p>
+      </div>
+      <div class="atlas-split">
+        <article class="atlas-card fail">
+          <span class="atlas-badge">Original design failed</span>
+          <h3>Apple published Unix socket</h3>
+          <div class="atlas-diagram">
+            <pre class="mermaid">
+flowchart TB
+  B["Browser"] --> P["Mac loopback proxy"] --> HS["Host Unix socket"]
+  HS --> Relay["Apple relay looks in immutable rootfs view"] --> GS["Guest socket on /tmp or /state mount"]
+  GS --> D["DSH guest loopback"]
+  X["Socket is invisible to relay\nconnection resets"]
+  HS --> X
+  classDef bad fill:#fff0f1,stroke:#d22d36,color:#101318;
+  class X,HS bad;
+            </pre>
+          </div>
+          <ul><li>tmpfs and volume sockets both failed</li><li>read-only rootfs cannot host a relay-visible socket</li><li>making rootfs writable is rejected</li></ul>
+        </article>
+        <article class="atlas-card good">
+          <span class="atlas-badge">Candidate passed</span>
+          <h3>Manager-owned exec streams</h3>
+          <div class="atlas-diagram">
+            <pre class="mermaid">
+flowchart TB
+  B["Browser"] --> P["Proxy\nMac 127.0.0.1"]
+  P ==>|one owned exec stream| G["Guest connector"]
+  G --> D["DSH\nguest 127.0.0.1"]
+  IP["Guest IPv4 + IPv6"] -.-> Deny["connection refused"] -.-> D
+  classDef ok fill:#e8f8ef,stroke:#168a4c,color:#101318;
+  classDef deny fill:#fff0f1,stroke:#d22d36,color:#101318;
+  class P,G,D ok;
+  class IP,Deny deny;
+            </pre>
+          </div>
+          <ul><li>no published port or socket</li><li>HTTP, API, and DSH event WebSocket passed</li><li>about eight persistent exec connections in the measured page</li></ul>
+        </article>
+      </div>
+      <div class="atlas-callout"><strong>Tradeoff:</strong> the candidate keeps the strongest invariants, but makes connection ownership a manager responsibility. Phase 2 must prove load, reconnection, Apple service interruption, and leak-free child reaping under the configured process and file limits.</div>
+    </section>
+
+    <section class="atlas-section" id="resources">
+      <div class="atlas-heading">
+        <div><span class="atlas-step">DRAWING 04</span><h2>What is shared, persistent, or disposable?</h2></div>
+        <p>Deletion safety comes from exact ownership records, not name globs or guesses about runtime state.</p>
+      </div>
+      <div class="atlas-panel atlas-table-wrap">
+        <table>
+          <thead><tr><th>Resource</th><th>Scope</th><th>Lifecycle</th><th>Why it exists</th></tr></thead>
+          <tbody>
+            <tr><td>OCI image</td><td>Shared by exact build identity</td><td>Remove only when unreferenced</td><td>Reproducible DSH application filesystem</td></tr>
+            <tr><td>Custom kernel</td><td>Shared by exact digest and policy</td><td>Remove only when unreferenced</td><td>Functional Landlock enforcement</td></tr>
+            <tr><td>Runtime container</td><td>Per named instance</td><td>Disposable and recreatable</td><td>Active DSH process boundary</td></tr>
+            <tr><td>State volume</td><td>Per instance and DSH SHA</td><td>Persists until explicit state deletion</td><td>Sessions, settings, provider credentials</td></tr>
+            <tr><td>Cache volume</td><td>Per instance and DSH SHA</td><td>Persistent but rebuildable</td><td>npm, pnpm, language and tool caches</td></tr>
+            <tr><td>Workspace bind</td><td>Exact managed host directory</td><td>User-managed data lifecycle</td><td>Immediate edits in Zed; workspace risk is explicit</td></tr>
+            <tr><td>Apple network</td><td>Per instance</td><td>Persists with instance</td><td>Live outbound egress, no DSH interface listener</td></tr>
+            <tr><td>Mac proxy + exec children</td><td>Per running instance</td><td>Must vanish after stop</td><td>The only browser-to-DSH path</td></tr>
+            <tr><td>Metadata record</td><td>Per instance</td><td>Persists until explicit deletion</td><td>Exact identities, acknowledgements, cleanup targets</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="atlas-section" id="gates">
+      <div class="atlas-heading">
+        <div><span class="atlas-step">DRAWING 05</span><h2>The implementation sequence is a gated pipeline</h2></div>
+        <p>We do not build a manager around assumptions that Phase 0 has already disproved.</p>
+      </div>
+      <figure class="atlas-panel atlas-diagram">
+        <pre class="mermaid">
+flowchart LR
+  P0["Phase 0\nspikes COMPLETE"] --> A["Architecture + audit\nACCEPTED"]
+  A --> P1["Phase 1\nmanager foundation COMPLETE"]
+  P1 --> C{"Runtime gate\nacknowledge live egress\n+ bind workspace risk?"}
+  C -->|no| Hold["Keep read-only planner\nno managed resources created"]
+  C -->|yes| P2["Phase 2\nfull named-instance vertical slice\nand security acceptance"]
+  P2 --> P3["Phase 3\ncontrolled DSH evaluation\nand host-native comparison"]
+
+  classDef done fill:#e8f8ef,stroke:#168a4c,color:#101318;
+  classDef decision fill:#fff3df,stroke:#b96b00,color:#101318;
+  classDef future fill:#e7eefc,stroke:#3468dc,color:#101318;
+  classDef stop fill:#fff0f1,stroke:#d22d36,color:#101318;
+  class P0,A,P1 done;
+  class C decision;
+  class P2,P3 future;
+  class Hold stop;
+        </pre>
+      </figure>
+      <div class="atlas-three">
+        <article class="atlas-card"><h3>Phase 1: manager foundation</h3><p>CLI parsing, exact names, schema, partial-failure journal, audit records, kernel verification, Apple adapter, proxy ownership, and dry-run behavior.</p></article>
+        <article class="atlas-card"><h3>Phase 2: vertical slice</h3><p><code>init</code>, <code>start</code>, <code>status</code>, <code>logs</code>, <code>stop</code>, <code>delete</code>, then lifecycle, security, transport-load, drift, and cleanup tests.</p></article>
+        <article class="atlas-card"><h3>Phase 3: evaluation</h3><p>Use DSH for representative app work, inspect its sessions and token data, and compare startup, memory, and interaction latency with a trusted host-native baseline.</p></article>
+      </div>
+    </section>
+
+    <section class="atlas-section" id="evidence">
+      <div class="atlas-heading">
+        <div><span class="atlas-step">DRAWING 06</span><h2>What Phase 0 actually proved</h2></div>
+        <p>“Available as a CLI flag” was never counted as evidence. These are functional outcomes.</p>
+      </div>
+      <div class="atlas-panel atlas-table-wrap">
+        <table>
+          <thead><tr><th>Gate</th><th>Result</th><th>Proof</th></tr></thead>
+          <tbody>
+            <tr><td>Nix-friendly installation</td><td><span class="atlas-status pass">Pass</span></td><td>Apple Container declared in nix-darwin Homebrew formulas; check, build, and rebuild passed.</td></tr>
+            <tr><td>Immutable source image</td><td><span class="atlas-status pass">Pass</span></td><td>Exact git archive, frozen pnpm, full Web build, static launcher, self-contained runtime closure.</td></tr>
+            <tr><td>Runtime confinement</td><td><span class="atlas-status pass">Pass</span></td><td>UID 1000, read-only root, zero effective caps, exact writable mounts, resource ceilings, read-only Git metadata.</td></tr>
+            <tr><td>Landlock on default Apple kernel</td><td><span class="atlas-status fail">Fail</span></td><td><code>CONFIG_SECURITY_LANDLOCK</code> absent; syscall returned <code>ENOSYS</code>.</td></tr>
+            <tr><td>Landlock on pinned kernel</td><td><span class="atlas-status pass">Pass</span></td><td>Workspace write succeeded and prohibited <code>/etc</code> write was denied.</td></tr>
+            <tr><td>Original socket transport</td><td><span class="atlas-status fail">Fail</span></td><td>Apple relay could not see sockets on tmpfs or volume mounts through read-only rootfs.</td></tr>
+            <tr><td>Exec-stream transport</td><td><span class="atlas-status pass">Pass</span></td><td>Frontend, HTTP/API, WebSocket, Host fence, restart, persistence, IPv4/IPv6 refusal, loopback-only Mac listener.</td></tr>
+            <tr><td>Dependency policy</td><td><span class="atlas-status pass">Accepted</span></td><td>0 critical, 12 high, 12 moderate, 1 low. Acknowledged for controlled evaluation.</td></tr>
+            <tr><td>Phase 1 manager</td><td><span class="atlas-status pass">Pass</span></td><td>Strict typecheck, lint, 18 tests, build, manager audit, built CLI diagnostics, exact dry run, and Nix shell evaluation passed.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="atlas-evidence">
+        <div class="atlas-hash"><strong>DSH source</strong><code>99f6f02fecdb7dff40c3fbc9470f5907c29f74ca</code></div>
+        <div class="atlas-hash"><strong>OCI image index</strong><code>sha256:a9f384b239d75d6aca3448a7bb4ead0d6697fb9271e4b46b78849254dd4afc39</code></div>
+        <div class="atlas-hash"><strong>Custom kernel</strong><code>sha256:5ac12b28ec01f5ed89f4a6397a29a422b3e615f2b382d8ec328991b1a3953d1b</code></div>
+        <div class="atlas-hash"><strong>Exec-stream proxy</strong><code>sha256:5fba1f6a79073c3c779d19f9818dbd3c20e45cc7ed17587a38dc279a8d956231</code></div>
+      </div>
+    </section>
+
+    <section class="atlas-verdict" id="verdict">
+      <h2>The runtime creation gate</h2>
+      <p>The architecture and dependency audit are already accepted. These last acknowledgements authorize creation of persistent Apple resources and a live evaluation workspace. The Lavish queue is optional because it has been unreliable in this session.</p>
+      <form class="atlas-question" data-lavish-question="runtime-risk" onsubmit="event.preventDefault(); const d=new FormData(event.currentTarget); if(d.get('egress')&&d.get('bind')) window.lavish.queuePrompt('Acknowledge unrestricted guest egress and bind-workspace data risk. Proceed with the Phase 2 managed-instance vertical slice.',{tag:'choice',text:'Runtime risks acknowledged',queueKey:'runtime-risk',element:event.currentTarget,data:{question:'runtime-risk',egress:true,bind:true}});">
+        <fieldset>
+          <legend>Acknowledge both before the first managed instance is created</legend>
+          <label class="atlas-choice"><input type="checkbox" name="egress" value="yes"><span><b>Live unrestricted egress</b>The guest may contact arbitrary DNS names and IP addresses for providers, registries, packages, and development tools.</span></label>
+          <label class="atlas-choice"><input type="checkbox" name="bind" value="yes"><span><b>Bind-workspace data risk</b>Guest code may change or delete any file inside the exact writable workspace, although parent and sibling directories are not mounted.</span></label>
+          <button class="atlas-button" type="submit">Queue both acknowledgements</button>
+        </fieldset>
+      </form>
+      <p class="atlas-note">Until both are acknowledged, <code>doctor</code> and <code>plan</code> remain read-only and no Phase 1 command creates, stops, or deletes an Apple resource.</p>
+    </section>
+
+    <footer class="atlas-footer">
+      <span>Source: dsh-container-plan.md and spikes/phase-0 records</span>
+      <span>Design source: existing DSH architecture-atlas visual language</span>
+    </footer>
+  </main>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: dark ? 'dark' : 'base',
+      securityLevel: 'loose',
+      flowchart: { curve: 'basis', htmlLabels: true, useMaxWidth: true },
+      themeVariables: dark ? {} : {
+        fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+        primaryColor: '#e7eefc',
+        primaryTextColor: '#101318',
+        primaryBorderColor: '#3468dc',
+        lineColor: '#7a8492',
+        secondaryColor: '#f0ecff',
+        tertiaryColor: '#e8f8ef',
+        clusterBkg: '#f8fafc',
+        clusterBorder: '#cbd2dc'
+      }
+    });
+  </script>
+</body>
+</html>

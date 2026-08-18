@@ -1,0 +1,41 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
+  "files": {
+    "includes": [
+      "src/**/*.ts",
+      "test/**/*.ts",
+      "e2e/**/*.ts",
+      "playwright.config.ts",
+      "*.json",
+      "*.md",
+      "docs/**/*.md",
+      "spikes/**/*.md",
+      "flake.nix"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "correctness": {
+        "noUnusedVariables": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "error"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "all"
+    }
+  }
+}

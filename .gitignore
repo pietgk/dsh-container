@@ -2,10 +2,13 @@ dist/
 node_modules/
 .state/
 workspaces/
+.lavish/
 .direnv/
 result
 playwright-report/
 test-results/
+coverage/
+.DS_Store
 *.log
 *.env
 .env.*

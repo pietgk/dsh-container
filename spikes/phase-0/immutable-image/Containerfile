@@ -1,0 +1,154 @@
+ARG BASE_IMAGE=docker.io/library/node@sha256:af01d58b748ec92b1d6e8e11429aad424fd1e68c848185399dca0596a1ab8f5c
+
+FROM ${BASE_IMAGE} AS builder
+
+ENV CI=1 \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      build-essential \
+      ca-certificates \
+      file \
+      git \
+      musl-tools \
+      python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+ADD dsh-source.tar ./
+
+RUN node -e "const p=require('./package.json'); if(p.packageManager!=='pnpm@11.7.0') process.exit(1)" \
+    && corepack enable \
+    && corepack prepare pnpm@11.7.0 --activate \
+    && pnpm --version | grep -Fx 11.7.0
+
+RUN pnpm install --frozen-lockfile
+
+RUN pnpm --dir native/landlock-run run build:native \
+    && file native/landlock-run/packages/linux-arm64/bin/landlock-run \
+      | grep -E 'ELF 64-bit LSB.*ARM aarch64.*statically linked'
+
+RUN pnpm run build
+
+# The published profile graph contains runtime peer edges that are not part of
+# the CLI's production dependency closure. Build a self-contained CLI deploy,
+# add the reviewed SDK runtime closure, then materialize the four remaining
+# peer-only service packages. This keeps every target inside /opt and avoids
+# retaining workspace links back to /src.
+RUN pnpm --config.inject-workspace-packages=true --config.strict-dep-builds=false \
+      --filter @deepseek-ai/dsh deploy --prod /opt/dsh \
+    && pnpm --config.inject-workspace-packages=true --config.strict-dep-builds=false \
+      --filter dsh-jsonrpc-agent-pkg deploy --prod /opt/dsh-sdk-runtime \
+    && mkdir -p /opt/dsh-extra \
+    && for package in \
+         @deepseek-ai/dsh-spill \
+         @deepseek-ai/dsh-session-telemetry \
+         @deepseek-ai/dsh-atomic-write \
+         @deepseek-ai/dsh-session-title-llm; do \
+         slug="${package##*/}"; \
+         pnpm --config.inject-workspace-packages=true --config.strict-dep-builds=false \
+           --filter "${package}" deploy --prod "/opt/dsh-extra/${slug}"; \
+       done \
+    # DSH heals a flat profile fallback by traversing package manifests from
+    # the installation path. Promote pnpm's self-contained virtual-store links
+    # so that traversal sees dynamic plugin dependencies as normal packages.
+    && find /opt/dsh/node_modules/.pnpm/node_modules -type l -print \
+      | while IFS= read -r link; do \
+          relative="${link#/opt/dsh/node_modules/.pnpm/node_modules/}"; \
+          target="/opt/dsh/node_modules/${relative}"; \
+          if [ ! -e "${target}" ] && [ ! -L "${target}" ]; then \
+            mkdir -p "$(dirname "${target}")"; \
+            ln -s "$(readlink -f "${link}")" "${target}"; \
+          fi; \
+        done \
+    # Link the peer-only packages supplied by the SDK runtime closure into the
+    # CLI's flat fallback. Their real package trees remain self-contained.
+    && for package in \
+         cordis-plugin-group \
+         dsh-invariants \
+         dsh-compaction \
+         dsh-scope \
+         dsh-fs \
+         dsh-subprocess \
+         dsh-timeout \
+         dsh-sandbox \
+         dsh-shell \
+         dsh-output-retention \
+         dsh-workflow \
+         dsh-code-runtime \
+         dsh-bash-local \
+         dsh-anonymous-user-id \
+         dsh-subagent-in-process-driver; do \
+         source="/opt/dsh-sdk-runtime/node_modules/@deepseek-ai/${package}"; \
+         target="/opt/dsh/node_modules/@deepseek-ai/${package}"; \
+         test -e "${source}"; \
+         if [ ! -e "${target}" ] && [ ! -L "${target}" ]; then \
+           ln -s "${source}" "${target}"; \
+         fi; \
+       done \
+    # Place the last four service packages directly under the CLI node_modules
+    # so their peer imports participate in the same flat parent-directory walk.
+    && for package in \
+         dsh-spill \
+         dsh-session-telemetry \
+         dsh-atomic-write \
+         dsh-session-title-llm; do \
+         target="/opt/dsh/node_modules/@deepseek-ai/${package}"; \
+         mkdir -p "${target}"; \
+         tar --exclude='./node_modules' -C "/opt/dsh-extra/${package}" -cf - . \
+           | tar -C "${target}" -xf -; \
+       done \
+    && cp -R apps/cli/lib apps/cli/config /opt/dsh/ \
+    && node /opt/dsh/lib/bin.js --version | grep -Fx 0.1.0-rc.7 \
+    && test -e /opt/dsh/node_modules/@deepseek-ai/dsh-session-query-sqlite/package.json \
+    && test -e /opt/dsh/node_modules/@deepseek-ai/dsh-timeout/package.json \
+    && test -e /opt/dsh/node_modules/@deepseek-ai/dsh-session-title-llm/package.json \
+    && test -n "$(find /opt/dsh -type f -path '*/node-addon-landlock-run-linux-arm64/bin/landlock-run' -perm -111 -print -quit)" \
+    && test -z "$(find /opt/dsh /opt/dsh-sdk-runtime \( -name .git -o -name .npmrc -o -name .pnpm-store \) -print -quit)" \
+    && test -z "$(find /opt/dsh /opt/dsh-sdk-runtime -type l -lname '/src/*' -print -quit)"
+
+FROM ${BASE_IMAGE} AS runtime
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      bash \
+      ca-certificates \
+      git \
+      ripgrep \
+    && rm -rf /var/lib/apt/lists/* \
+    && corepack enable \
+    && mkdir -p \
+      /cache \
+      /state/launch \
+      /state/home \
+      /state/dsh \
+      /state/xdg/config \
+      /state/xdg/data \
+      /state/xdg/state \
+      /workspace \
+    && chown -R 1000:1000 /cache /state /workspace
+
+COPY --from=builder --chown=1000:1000 /opt/dsh /opt/dsh
+COPY --from=builder --chown=1000:1000 /opt/dsh-sdk-runtime /opt/dsh-sdk-runtime
+COPY --chown=1000:1000 supervisor.mjs /opt/dsh-container/supervisor.mjs
+
+ENV HOME=/state/home \
+    DSH_HOME=/state/dsh \
+    DSH_TELEMETRY_DISABLED=1 \
+    XDG_CACHE_HOME=/cache/xdg \
+    XDG_CONFIG_HOME=/state/xdg/config \
+    XDG_DATA_HOME=/state/xdg/data \
+    XDG_STATE_HOME=/state/xdg/state \
+    COREPACK_HOME=/cache/corepack \
+    PNPM_HOME=/cache/pnpm \
+    npm_config_cache=/cache/npm \
+    npm_config_store_dir=/cache/pnpm-store \
+    TMPDIR=/tmp \
+    PATH=/cache/pnpm:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+WORKDIR /state/launch
+USER 1000:1000
+EXPOSE 3080
+
+ENTRYPOINT ["node", "/opt/dsh-container/supervisor.mjs"]

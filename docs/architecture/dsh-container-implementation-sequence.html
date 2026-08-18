@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DSH Container implementation sequence</title>
+  <style>
+    :root {
+      --dsw-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --ds-font-family-code: "SF Mono", "JetBrains Mono", "Fira Code", Consolas, Menlo, monospace;
+      --dsw-alias-bg-base: #ffffff;
+      --dsw-alias-bg-module-platform: #f5f6f7;
+      --dsw-alias-bg-layer-2: #ffffff;
+      --dsw-alias-border-l1: rgba(0, 0, 0, 0.04);
+      --dsw-alias-border-l2: rgba(0, 0, 0, 0.10);
+      --dsw-alias-border-l3: rgba(0, 0, 0, 0.12);
+      --dsw-alias-label-primary: #0f1115;
+      --dsw-alias-label-secondary: #61666b;
+      --dsw-alias-label-tertiary: #81858c;
+      --dsw-alias-label-caption: #adb2b8;
+      --dsw-alias-state-business-primary: #4176e6;
+      --dsw-alias-state-business-tertiary: #e4edfd;
+      --dsw-alias-state-success-primary: #22c55e;
+      --dsw-alias-state-success-tertiary: #e6faed;
+      --dsw-alias-state-warn-primary: #f59e0b;
+      --dsw-alias-state-warn-tertiary: #fef5e7;
+      --dsw-alias-state-error-primary: #ec1313;
+      --dsw-alias-state-error-tertiary: #fef2f2;
+      --dsw-alias-markdown-code-block: #f9fafb;
+      --shadow: 0 12px 42px rgba(15, 17, 21, 0.07);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--dsw-alias-bg-module-platform); }
+    body {
+      margin: 0;
+      font-family: var(--dsw-font-family);
+      color: var(--dsw-alias-label-primary);
+      background:
+        radial-gradient(circle at 90% 0%, rgba(65, 118, 230, 0.09), transparent 28rem),
+        var(--dsw-alias-bg-module-platform);
+      -webkit-font-smoothing: antialiased;
+    }
+    code, .mono { font-family: var(--ds-font-family-code); }
+    a { color: inherit; }
+    p, li, td, th, h1, h2, h3, code, span { overflow-wrap: anywhere; }
+    svg, img { max-width: 100%; height: auto; }
+
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 72px; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 28px;
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 13px;
+    }
+    .wordmark { color: var(--dsw-alias-label-primary); font-weight: 650; letter-spacing: .08em; }
+    .source { font-family: var(--ds-font-family-code); font-size: 12px; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(270px, .75fr);
+      gap: 28px;
+      padding: 40px;
+      background: var(--dsw-alias-bg-base);
+      border: 1px solid var(--dsw-alias-border-l1);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { color: var(--dsw-alias-state-business-primary); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 10px 0 14px; font-size: clamp(34px, 5vw, 62px); line-height: 1.02; letter-spacing: -.045em; }
+    .hero p { max-width: 720px; margin: 0; color: var(--dsw-alias-label-secondary); font-size: 17px; line-height: 1.65; }
+    .hero-aside { display: grid; align-content: start; gap: 12px; }
+    .decision {
+      padding: 16px;
+      border-radius: 14px;
+      background: var(--dsw-alias-bg-module-platform);
+      border: 1px solid var(--dsw-alias-border-l2);
+    }
+    .decision strong { display: block; margin-bottom: 5px; font-size: 13px; }
+    .decision span { color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.45; }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 40px; }
+    .metric { padding: 17px 18px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 14px; background: rgba(255,255,255,.78); }
+    .metric b { display: block; font-size: 25px; line-height: 1; }
+    .metric span { display: block; margin-top: 7px; color: var(--dsw-alias-label-tertiary); font-size: 12px; }
+
+    .section { margin-top: 42px; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 18px; margin-bottom: 16px; }
+    .section h2 { margin: 0; font-size: 25px; letter-spacing: -.025em; }
+    .section-head p { max-width: 620px; margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 13px; line-height: 1.5; text-align: right; }
+    .panel { min-width: 0; padding: 24px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 18px; background: var(--dsw-alias-bg-base); }
+    .diagram { min-height: 380px; overflow: auto; }
+    .diagram .mermaid { min-width: 720px; }
+    .caption { margin: 14px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 1.5; }
+
+    .sequence { display: grid; gap: 14px; }
+    .stage {
+      display: grid;
+      grid-template-columns: 68px minmax(0, 1.15fr) minmax(220px, .85fr);
+      gap: 20px;
+      min-width: 0;
+      padding: 22px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: 16px;
+      background: var(--dsw-alias-bg-base);
+      box-shadow: 0 5px 24px rgba(15,17,21,.025);
+    }
+    .stage-number {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--dsw-alias-state-business-tertiary);
+      color: var(--dsw-alias-state-business-primary);
+      font-family: var(--ds-font-family-code);
+      font-weight: 700;
+    }
+    .stage h3 { margin: 2px 0 7px; font-size: 17px; }
+    .stage p { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 14px; line-height: 1.55; }
+    .stage ul { margin: 8px 0 0; padding-left: 18px; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.55; }
+    .exit { align-self: stretch; padding: 14px; border-radius: 12px; background: var(--dsw-alias-bg-module-platform); }
+    .exit-label { display: block; margin-bottom: 7px; color: var(--dsw-alias-label-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+    .exit p { color: var(--dsw-alias-label-primary); font-size: 13px; }
+    .stage.gate { border-color: rgba(245, 158, 11, .45); }
+    .stage.gate .stage-number { background: var(--dsw-alias-state-warn-tertiary); color: #b96500; }
+
+    .split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .callout { padding: 20px; border-radius: 16px; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-base); }
+    .callout h3 { margin: 0 0 8px; font-size: 16px; }
+    .callout p, .callout li { color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.55; }
+    .callout ul { margin: 8px 0 0; padding-left: 18px; }
+    .callout.warn { background: var(--dsw-alias-state-warn-tertiary); border-color: rgba(245,158,11,.35); }
+    .callout.stop { background: var(--dsw-alias-state-error-tertiary); border-color: rgba(236,19,19,.25); }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--dsw-alias-border-l2); border-radius: 16px; background: var(--dsw-alias-bg-base); }
+    table { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 14px 16px; border-bottom: 1px solid var(--dsw-alias-border-l1); text-align: left; vertical-align: top; line-height: 1.45; }
+    th { color: var(--dsw-alias-label-tertiary); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; background: var(--dsw-alias-bg-module-platform); }
+    tr:last-child td { border-bottom: 0; }
+    td:first-child { font-weight: 650; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 12px; font-weight: 650; }
+    .dot { width: 7px; height: 7px; border-radius: 999px; background: var(--dsw-alias-state-business-primary); }
+    .dot.success { background: var(--dsw-alias-state-success-primary); }
+    .dot.warn { background: var(--dsw-alias-state-warn-primary); }
+    .dot.stop { background: var(--dsw-alias-state-error-primary); }
+
+    .order {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .order-card { min-width: 0; padding: 18px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 14px; background: var(--dsw-alias-bg-base); }
+    .order-card b { display: block; margin-bottom: 6px; }
+    .order-card p { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.5; }
+    .order-card code { display: inline-block; margin-bottom: 8px; color: var(--dsw-alias-state-business-primary); font-size: 12px; }
+
+    .footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--dsw-alias-border-l2); display: flex; justify-content: space-between; gap: 16px; color: var(--dsw-alias-label-tertiary); font-size: 12px; }
+
+    @media (max-width: 860px) {
+      .hero, .split { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stage { grid-template-columns: 52px minmax(0, 1fr); }
+      .exit { grid-column: 2; }
+      .order { grid-template-columns: 1fr; }
+      .section-head { align-items: start; flex-direction: column; }
+      .section-head p { text-align: left; }
+    }
+    @media (max-width: 520px) {
+      .shell { width: min(100% - 20px, 1180px); padding-top: 18px; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .hero { padding: 24px; }
+      .metrics { grid-template-columns: 1fr; }
+      .panel { padding: 16px; }
+      .stage { grid-template-columns: 1fr; gap: 12px; }
+      .exit { grid-column: 1; }
+      .footer { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <div class="wordmark">DSH CONTAINER</div>
+      <div class="source">Implementation proposal based on dsh-container-plan.md, handoff v2</div>
+    </div>
+
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Recommended execution order</div>
+        <h1>Prove the boundary, then build the manager.</h1>
+        <p>The first production code should appear only after one exact DSH image can run securely and its Web UI can cross the guest loopback boundary without becoming reachable on a guest interface.</p>
+      </div>
+      <div class="hero-aside">
+        <div class="decision">
+          <strong>Primary ordering decision</strong>
+          <span>Run immutable-image Spike B before transport Spike A, then use that same image for the transport proof.</span>
+        </div>
+        <div class="decision">
+          <strong>First human checkpoint</strong>
+          <span>Apple Container is currently absent. Installation remains a separate approval before Phase 0 mutates the host.</span>
+        </div>
+        <div class="decision">
+          <strong>Hard stop</strong>
+          <span>If either spike fails, do not scaffold the TypeScript manager and do not fall back to Colima silently.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="metrics" aria-label="Plan summary">
+      <div class="metric"><b>2</b><span>mandatory architecture spikes</span></div>
+      <div class="metric"><b>1</b><span>version 1 backend: Apple Container</span></div>
+      <div class="metric"><b>4</b><span>persistent writable roots at runtime</span></div>
+      <div class="metric"><b>0</b><span>product files before the spike gate passes</span></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>The dependency path</h2>
+        <p>This is the shortest sequence that keeps every later result tied to the exact runtime we intend to ship.</p>
+      </div>
+      <div class="panel diagram">
+        <pre class="mermaid">
+flowchart TD
+  R["0. Read-only revalidation\nHost, DSH SHA, Apple docs, Colima snapshot"] --> P["1. Apple prerequisite qualification\nInstall only after approval, prove runtime controls"]
+  P --> C["2. Freeze Phase 0 fixture\nExact SHA, resource names, ports, assertions"]
+  C --> B["3. Spike B first\nImmutable Linux arm64 image and runtime closure"]
+  B --> A["4. Spike A with Spike B image\nGuest loopback to Unix socket to Mac loopback"]
+  A --> G{"5. Architecture gate\nBoth proofs pass?"}
+  G -- "No" --> X["Stop and amend architecture\nNo manager skeleton"]
+  G -- "Yes" --> S["6. Manager foundations\nMetadata, journal, adapter, reconciler, dry-run"]
+  S --> V["7. Apple vertical slice\nstatus, init, start, logs, stop, delete"]
+  V --> H["8. Lifecycle and security acceptance\nFailure injection, drift, exact cleanup, browser E2E"]
+  H --> E["9. Evaluation\nHost-native baseline and container scenarios"]
+        </pre>
+        <p class="caption">The handoff names Spike A before Spike B, but does not require that execution order. Reusing the exact Spike B image in Spike A removes a major source of test drift.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Implementation sequence</h2>
+        <p>Each stage has an evidence-based exit condition. Passing a command is not enough when a functional check is available.</p>
+      </div>
+      <div class="sequence">
+        <article class="stage">
+          <div class="stage-number">00</div>
+          <div>
+            <h3>Revalidate without changing the host</h3>
+            <p>Capture the current host and source facts, resolve the candidate DSH release to a full official SHA, and convert every dated assumption into a checked item.</p>
+            <ul>
+              <li>Host architecture, macOS, Node, pnpm, Zed, Apple Container, and Colima.</li>
+              <li>DSH build graph, Web flags, state paths, telemetry control, provider setup, and shutdown timeout.</li>
+              <li>Snapshot the existing Colima <code>default</code> state and configuration so later acceptance can prove it was untouched.</li>
+            </ul>
+          </div>
+          <div class="exit"><span class="exit-label">Exit evidence</span><p>A dated assumption matrix with command or source references, plus one selected immutable DSH SHA.</p></div>
+        </article>
+
+        <article class="stage gate">
+          <div class="stage-number">01</div>
+          <div>
+            <h3>Qualify the Apple prerequisite</h3>
+            <p>After explicit installation approval, verify the exact installed Apple Container version and run tiny disposable probes before involving DSH.</p>
+            <ul>
+              <li>Prove read-only rootfs, tmpfs, capability drop, CPU, memory, <code>nproc</code>, and <code>nofile</code> behavior.</li>
+              <li>Prove named volumes, non-root ownership, dedicated networking, socket publication, and exact cleanup.</li>
+              <li>Use deterministic spike names and preserve command output. Never touch Colima.</li>
+            </ul>
+          </div>
+          <div class="exit"><span class="exit-label">Exit evidence</span><p>The installed runtime can enforce every version 1 control required by the plan, or the architecture stops here.</p></div>
+        </article>
+
+        <article class="stage">
+          <div class="stage-number">02</div>
+          <div>
+            <h3>Freeze the Phase 0 fixture</h3>
+            <p>Create a small spike-only area, not the manager project. Lock exact names, paths, image inputs, guest and host ports, commands, expected positives, and expected negatives.</p>
+            <ul>
+              <li>Keep scripts rerunnable and cleanup target lists explicit.</li>
+              <li>Define the browser scenarios before testing the bridge.</li>
+              <li>Record deviations in one short Phase 0 report.</li>
+            </ul>
+          </div>
+          <div class="exit"><span class="exit-label">Exit evidence</span><p>Another developer can reproduce or clean up the spikes without guessing any target.</p></div>
+        </article>
+
+        <article class="stage gate">
+          <div class="stage-number">03</div>
+          <div>
+            <h3>Spike B: build the exact image</h3>
+            <p>Build from <code>git archive &lt;sha&gt;</code> in a clean multi-stage Linux arm64 build. Compile the static-musl launcher and construct a minimal runtime closure.</p>
+            <ul>
+              <li>Pin the Node base by digest, honor the repository pnpm version, and use the frozen lockfile.</li>
+              <li>Run and record the production dependency audit gate.</li>
+              <li>Prove non-root execution with only <code>/workspace</code>, <code>/state</code>, <code>/cache</code>, and <code>/tmp</code> writable.</li>
+              <li>Prove frontend serving, constrained shell execution, session persistence, Landlock usability, and graceful exit.</li>
+            </ul>
+          </div>
+          <div class="exit"><span class="exit-label">Exit evidence</span><p>Image digest, full provenance record, audit result, writable-path proof, runtime inventory, and a clean DSH Web startup.</p></div>
+        </article>
+
+        <article class="stage gate">
+          <div class="stage-number">04</div>
+          <div>
+            <h3>Spike A: prove the Web path with that image</h3>
+            <p>Keep DSH on guest <code>127.0.0.1</code>. Bridge it to an owner-only guest Unix socket, publish that socket, then proxy it from a manager-owned Mac loopback listener.</p>
+            <ul>
+              <li>Exercise page load, API calls, streaming, reconnect, readiness, trusted-host rejection, and graceful shutdown.</li>
+              <li>Use browser E2E against the Mac URL and inspect representative viewport screenshots.</li>
+              <li>Enumerate every guest vmnet IPv4 and IPv6 address and prove direct access fails.</li>
+              <li>Inspect Mac listeners and prove no non-loopback listener exists.</li>
+            </ul>
+          </div>
+          <div class="exit"><span class="exit-label">Exit evidence</span><p>Functional Web evidence plus negative reachability evidence. Any guest-interface listener or broad DSH bind is a failure.</p></div>
+        </article>
+
+        <article class="stage gate">
+          <div class="stage-number">05</div>
+          <div>
+            <h3>Hold the architecture gate</h3>
+            <p>Review both spike records as a single system. Resolve contradictions before any abstraction makes them harder to see.</p>
+            <ul>
+              <li>Pass only when the exact image and exact transport work together.</li>
+              <li>Record accepted limitations, especially unrestricted egress and the local macOS user threat-model boundary.</li>
+              <li>If a spike fails, compare Apple redesign, an authenticated boundary, or a reviewed Colima promotion.</li>
+            </ul>
+          </div>
+          <div class="exit"><span class="exit-label">Exit evidence</span><p>A written go decision with no weakened invariant. A no-go decision ends implementation work.</p></div>
+        </article>
+
+        <article class="stage">
+          <div class="stage-number">06</div>
+          <div>
+            <h3>Build manager foundations</h3>
+            <p>Now create the TypeScript project. Start with ownership, reconciliation, and diagnosability rather than command-specific happy paths.</p>
+            <ul>
+              <li>Versioned schemas, atomic metadata writes, per-instance operation lock, deterministic names, and stable internal IDs.</li>
+              <li>Structured process execution, secret-safe logs, dry-run, exact-target display, and typed errors.</li>
+              <li>Partial-failure journal and a lifecycle state machine that reconciles expected and observed Apple resources.</li>
+              <li>Apple command construction behind a product-operation adapter, with no fake second-backend parity.</li>
+            </ul>
+          </div>
+          <div class="exit"><span class="exit-label">Exit evidence</span><p>Unit-tested foundations can model absent, stopped, ready, drifted, partially created, and failed instances without real mutations.</p></div>
+        </article>
+
+        <article class="stage">
+          <div class="stage-number">07</div>
+          <div>
+            <h3>Deliver the Apple vertical slice in dependency order</h3>
+            <p>Implement the user journey as thin end-to-end increments. Keep security controls and cleanup semantics inside each increment.</p>
+            <ul>
+              <li><code>status</code> and host probe first, because every mutating command needs reconciliation.</li>
+              <li><code>init</code> next: source selection, audit, image reuse/build, acknowledgements, metadata, volumes, workspace, and network.</li>
+              <li><code>start</code> with the proven supervisor and bridge, then <code>logs</code>, <code>stop</code>, default <code>delete</code>, and explicit destructive deletes.</li>
+            </ul>
+          </div>
+          <div class="exit"><span class="exit-label">Exit evidence</span><p>One named bind-mode instance completes the full lifecycle twice, preserving state and workspace and removing only exact owned runtime targets.</p></div>
+        </article>
+
+        <article class="stage">
+          <div class="stage-number">08</div>
+          <div>
+            <h3>Break it before evaluating it</h3>
+            <p>Run the lifecycle, security, failure, and UI suites on the exact Apple runtime. Inject recoverable partial states rather than testing only clean starts.</p>
+            <ul>
+              <li>Port conflicts, stale PIDs, missing sockets, missing containers, drifted resources, readiness timeout, forced shutdown, and interrupted initialization.</li>
+              <li>Credential isolation, sibling-workspace denial, read-only root, functional resource ceilings, direct-IP denial, and exact destructive cleanup.</li>
+              <li>Browser behavior, streaming, reconnect, and representative viewport visual checks.</li>
+            </ul>
+          </div>
+          <div class="exit"><span class="exit-label">Exit evidence</span><p>All acceptance criteria pass repeatedly, logs contain no configured secrets, and the Colima default profile remains unchanged.</p></div>
+        </article>
+
+        <article class="stage">
+          <div class="stage-number">09</div>
+          <div>
+            <h3>Run the actual DSH evaluation</h3>
+            <p>Only after the isolation product is stable should its overhead and DSH usefulness be measured.</p>
+            <ul>
+              <li>Run the same trusted scenario host-native and containerized.</li>
+              <li>Separate guest DSH process metrics, Apple VM host metrics, and end-to-end timings.</li>
+              <li>Exercise plugin discovery, constrained code changes, resumed sessions, package installation, builds, tests, language tooling, trajectory, tokens, and Web UX.</li>
+            </ul>
+          </div>
+          <div class="exit"><span class="exit-label">Exit evidence</span><p>A concise evaluation report that can support a decision on volume workspaces, offline enforcement, Colima, or E2B.</p></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Vertical-slice command order</h2>
+        <p>The public CLI contract stays unchanged. This is the internal build order that reduces hidden coupling.</p>
+      </div>
+      <div class="order">
+        <div class="order-card"><code>1. status</code><b>Observe before mutating</b><p>Build host probing, metadata reading, backend inspection, health, drift, and redaction first.</p></div>
+        <div class="order-card"><code>2. init</code><b>Create reproducibly</b><p>Add immutable source selection, audit policy, image identity, acknowledgements, and exact owned resources.</p></div>
+        <div class="order-card"><code>3. start</code><b>Reconcile into ready</b><p>Apply mounts and controls, start the container and proxy, wait through the public URL, then rerun exposure checks.</p></div>
+        <div class="order-card"><code>4. logs</code><b>Make failure diagnosable</b><p>Expose bounded and follow views for DSH, proxy, and lifecycle logs with tested secret redaction.</p></div>
+        <div class="order-card"><code>5. stop</code><b>Prove controlled shutdown</b><p>Honor DSH disposal timing, distinguish graceful from forced termination, and remove ephemeral bridge resources exactly.</p></div>
+        <div class="order-card"><code>6. delete</code><b>Separate every blast radius</b><p>Default to container-only deletion. Resolve, display, confirm, and independently test state, cache, workspace, network, and image deletion.</p></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Gate matrix</h2>
+        <p>The rule is simple: no later stage may reinterpret a failed security assertion as an acceptable warning.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Gate</th><th>Must prove</th><th>Failure response</th><th>Durable output</th></tr></thead>
+          <tbody>
+            <tr><td><span class="pill"><span class="dot warn"></span>Prerequisite</span></td><td>Installed Apple runtime supports every required control functionally.</td><td>Stop before DSH spikes.</td><td>Versioned command transcript and control matrix.</td></tr>
+            <tr><td><span class="pill"><span class="dot warn"></span>Spike B</span></td><td>Exact source produces a minimal, non-root, usable Linux arm64 image.</td><td>Fix the source-image design or reject the candidate SHA.</td><td>Digests, audit, build record, runtime inventory, probes.</td></tr>
+            <tr><td><span class="pill"><span class="dot warn"></span>Spike A</span></td><td>Full Web traffic works through the socket path while all guest IP access fails.</td><td>Architecture review. Never broaden DSH binding.</td><td>Browser evidence, listener inventory, IPv4 and IPv6 negatives.</td></tr>
+            <tr><td><span class="pill"><span class="dot success"></span>Vertical slice</span></td><td>Lifecycle is idempotent, reconciled, persistent, and exactly cleaned up.</td><td>Stay in implementation. Do not begin evaluation.</td><td>Unit, component, integration, and Apple E2E results.</td></tr>
+            <tr><td><span class="pill"><span class="dot success"></span>Evaluation</span></td><td>Comparable host-native and container evidence answers the practical usefulness questions.</td><td>Report limitations rather than filling gaps with assumptions.</td><td>Metrics, screenshots, lifecycle records, selected DSH sessions.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section split">
+      <div class="callout warn">
+        <h3>First approval we will need</h3>
+        <p>Apple Container is absent on the current host snapshot. Revalidation is read-only, but installation is a separate host mutation and should be approved only when we are ready to run Phase 0.</p>
+      </div>
+      <div class="callout stop">
+        <h3>What we should not start yet</h3>
+        <ul>
+          <li>No <code>package.json</code> for the manager.</li>
+          <li>No Colima fallback or second backend abstraction.</li>
+          <li>No volume workspace or offline-policy work.</li>
+          <li>No modifications to the DSH checkout.</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>Scope source: dsh-container-plan.md</span>
+      <span>Design source: DSH Web UI tokens and typography from packages/client/ui-theme</span>
+    </footer>
+  </main>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "strict", flowchart: { curve: "basis", htmlLabels: true } });
+  </script>
+</body>
+</html>

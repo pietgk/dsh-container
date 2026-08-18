@@ -1,0 +1,35 @@
+name: Bug report
+description: Report a reproducible dsh-container defect
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include provider keys, credentials, or complete transcripts.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: Include the exact command and sanitized output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include macOS, Apple Container, Node, pnpm, and manager versions.
+    validations:
+      required: true
+  - type: checkboxes
+    id: secrets
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed provider keys, credentials, and private transcript content.
+          required: true
