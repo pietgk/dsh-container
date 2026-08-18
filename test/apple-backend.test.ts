@@ -107,7 +107,6 @@ test('git overmount rejects .git directories outside the workspace root', () => 
 })
 
 test('git overmount rejects arbitrary host paths in pointer files', () => {
-  const hostGit = `${record.workspace.hostPath}/.git`
   assert.deepEqual(
     workspaceGitMetadataMounts(record, {
       pathExists: () => true,

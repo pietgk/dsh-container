@@ -39,10 +39,7 @@ test('proxy identity matching rejects prefix-collision names', async () => {
     }
 
     assert.equal(await proxyProcessMatches(record, paths), false)
-    await assert.rejects(
-      () => stopProxyProcess(record, paths),
-      /command identity does not match/,
-    )
+    await assert.rejects(() => stopProxyProcess(record, paths), /command identity does not match/)
     assert.equal(child.killed, false)
   } finally {
     child.kill('SIGKILL')

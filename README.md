@@ -70,16 +70,7 @@ provider key and rotate it after risky work.
 
 ## Visual evaluation
 
-```text
-pnpm exec playwright install chromium
-DSH_E2E_BASE_URL=http://127.0.0.1:30081 \
-DSH_E2E_SESSION_TITLE="Inspect workspace app and report status" \
-pnpm e2e
-```
-
-The API proves functional behavior. Playwright proves repeatable rendering.
-Official Browser or connected Chrome proves interactive review. These evidence
-classes are recorded separately and are never silently substituted.
+See [Browser and Playwright runbook](docs/evaluation/browser-runbook.md).
 
 ## License
 

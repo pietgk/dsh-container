@@ -136,7 +136,11 @@ async function processCommand(pid: number): Promise<string | null> {
   })
 }
 
-function proxyCommandMatches(command: string, record: InstanceRecord, paths: ManagerPaths): boolean {
+function proxyCommandMatches(
+  command: string,
+  record: InstanceRecord,
+  paths: ManagerPaths,
+): boolean {
   return (
     hasExactArgument(command, 'internal-proxy') &&
     hasExactOptionValue(command, '--name', record.name) &&
@@ -149,9 +153,9 @@ function hasExactArgument(command: string, value: string): boolean {
 }
 
 function hasExactOptionValue(command: string, option: string, value: string): boolean {
-  return new RegExp(
-    `(?:^|\\s)${escapeRegex(option)}(?:\\s+|=)${escapeRegex(value)}(?:\\s|$)`,
-  ).test(command)
+  return new RegExp(`(?:^|\\s)${escapeRegex(option)}(?:\\s+|=)${escapeRegex(value)}(?:\\s|$)`).test(
+    command,
+  )
 }
 
 function escapeRegex(value: string): string {

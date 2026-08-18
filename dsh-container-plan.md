@@ -1,6 +1,6 @@
 # DSH Container Evaluation Handoff v2
 
-Status: Phase 0 accepted; Phase 1 complete; Phase 2 implementation and managed-instance validation in progress  
+Status: Phases 0 through 3 complete; published manager with layered evaluation evidence  
 Prepared: 2026-08-17  
 Target host: Apple Silicon MacBook, macOS 26.5.1
 
@@ -583,9 +583,9 @@ The user explicitly acknowledged unrestricted guest egress and bind-workspace da
 
 Phase 2 completed on 2026-08-18. The implementation and live acceptance record
 is in `implementation/phase-2-record.md`. The managed `evaluation` instance was
-left running at `http://127.0.0.1:30081/`. Performance baselines, representative
-application-development tasks, controlled resource snapshots, and repeated
-Apple service interruption remain Phase 3 work.
+left running at `http://127.0.0.1:30081/`. Phase 3 evaluation evidence is in
+`implementation/phase-3-record.md`. Apple service interruption recovery
+remains open acceptance debt.
 
 ### Phase 3: evaluation
 
@@ -733,7 +733,7 @@ These are deliberately deferred until the version 1 evidence exists:
 - No Docker Desktop or host Docker CLI is required.
 - Apple Container 1.2.2 supports `--read-only`, `--tmpfs`, `--cap-drop`, `--ulimit nproc`, and `--ulimit nofile`; Phase 0 functionally exercised them.
 - Apple `--publish-socket` cannot relay a socket created on the required writable mounts while the root filesystem remains read-only.
-- The exec-stream proxy can carry current DSH HTTP, API, and WebSocket traffic while DSH remains on guest loopback; Phase 2 still must exercise sustained load and failure recovery.
+- The exec-stream proxy can carry current DSH HTTP, API, and WebSocket traffic while DSH remains on guest loopback; Phase 3 verified overload admission, idle keep-alive recovery, and proxy failure recovery under controlled load.
 - A dedicated Apple network plus guest-loopback binding prevented direct access to DSH through the tested guest IPv4 and IPv6 addresses.
 - The default Apple kernel lacks Landlock, and the Apple backend therefore requires the exact verified custom kernel and functional probe.
 - Bind mode is sufficient for the controlled evaluation; volume mode remains the stronger future option for unfamiliar code.

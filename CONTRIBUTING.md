@@ -14,12 +14,8 @@ nix flake check --no-build
 nix build .#dsh-container
 ```
 
-Run the visual suite only against a controlled local evaluation instance:
-
-```text
-pnpm exec playwright install chromium
-DSH_E2E_BASE_URL=http://127.0.0.1:30081 pnpm e2e
-```
+Run the visual suite only against a controlled local evaluation instance. See
+[Browser and Playwright runbook](docs/evaluation/browser-runbook.md).
 
 Apple Container lifecycle tests require an Apple-silicon Mac with the exact
 reviewed runtime. GitHub-hosted runners cannot exercise the nested VM lifecycle.

@@ -334,10 +334,7 @@ interface GitMetadataDeps {
   readonly realPath?: (candidate: string) => string
 }
 
-function canonicalPath(
-  candidate: string,
-  realPath: (resolved: string) => string,
-): string | null {
+function canonicalPath(candidate: string, realPath: (resolved: string) => string): string | null {
   try {
     return realPath(candidate)
   } catch {
