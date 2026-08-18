@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { access } from 'node:fs/promises'
 import * as path from 'node:path'
 import { acceptedDsh, defaultLimits, guestPaths } from '../../constants.js'
@@ -332,6 +332,88 @@ interface GitMetadataDeps {
   readonly pathExists?: (candidate: string) => boolean
   readonly readTextFile?: (candidate: string) => string
   readonly statType?: (candidate: string) => 'file' | 'directory'
+  readonly realPath?: (candidate: string) => string
+}
+
+function canonicalPath(
+  candidate: string,
+  realPath: (resolved: string) => string,
+): string | null {
+  try {
+    return realPath(candidate)
+  } catch {
+    return null
+  }
+}
+
+function isGitCommonDirectory(
+  candidate: string,
+  pathExists: (candidate: string) => boolean,
+  statType: (candidate: string) => 'file' | 'directory',
+): boolean {
+  const head = path.join(candidate, 'HEAD')
+  const objects = path.join(candidate, 'objects')
+  const refs = path.join(candidate, 'refs')
+  return (
+    pathExists(head) &&
+    statType(head) === 'file' &&
+    pathExists(objects) &&
+    statType(objects) === 'directory' &&
+    pathExists(refs) &&
+    statType(refs) === 'directory'
+  )
+}
+
+function resolveValidatedWorktreeGitMetadata(
+  hostGit: string,
+  workspacePath: string,
+  deps: {
+    readonly pathExists: (candidate: string) => boolean
+    readonly readTextFile: (candidate: string) => string
+    readonly statType: (candidate: string) => 'file' | 'directory'
+    readonly realPath: (candidate: string) => string
+  },
+): { hostGitdir: string; hostCommonDir: string } | null {
+  const gitPointer = deps.readTextFile(hostGit).trim()
+  const gitdirMatch = /^gitdir:\s*(.+)$/.exec(gitPointer)
+  if (gitdirMatch === null) return null
+
+  const resolvedGitdir = path.resolve(workspacePath, gitdirMatch[1]!.trim())
+  const hostGitdir = canonicalPath(resolvedGitdir, deps.realPath)
+  if (hostGitdir === null || !deps.pathExists(hostGitdir) || deps.statType(hostGitdir) !== 'directory') {
+    return null
+  }
+
+  const reciprocalPath = path.join(hostGitdir, 'gitdir')
+  if (!deps.pathExists(reciprocalPath) || deps.statType(reciprocalPath) !== 'file') return null
+
+  const reciprocalTarget = canonicalPath(
+    path.resolve(hostGitdir, deps.readTextFile(reciprocalPath).trim()),
+    deps.realPath,
+  )
+  const canonicalHostGit = canonicalPath(hostGit, deps.realPath)
+  if (reciprocalTarget === null || canonicalHostGit === null || reciprocalTarget !== canonicalHostGit) {
+    return null
+  }
+
+  const commondirPath = path.join(hostGitdir, 'commondir')
+  if (!deps.pathExists(commondirPath) || deps.statType(commondirPath) !== 'file') return null
+
+  const commonDir = deps.readTextFile(commondirPath).trim()
+  if (commonDir.length === 0) return null
+
+  const resolvedCommonDir = path.resolve(hostGitdir, commonDir)
+  const hostCommonDir = canonicalPath(resolvedCommonDir, deps.realPath)
+  if (
+    hostCommonDir === null ||
+    !deps.pathExists(hostCommonDir) ||
+    deps.statType(hostCommonDir) !== 'directory' ||
+    !isGitCommonDirectory(hostCommonDir, deps.pathExists, deps.statType)
+  ) {
+    return null
+  }
+
+  return { hostGitdir, hostCommonDir }
 }
 
 export function workspaceGitMetadataMounts(
@@ -346,34 +428,24 @@ export function workspaceGitMetadataMounts(
       const stats = statSync(candidate)
       return stats.isDirectory() ? 'directory' : 'file'
     })
+  const realPath = deps.realPath ?? ((candidate: string) => realpathSync(candidate))
   const hostGit = path.join(record.workspace.hostPath, '.git')
   if (!pathExists(hostGit)) return []
   if (statType(hostGit) === 'directory') {
     return [`type=bind,source=${hostGit},target=${guestPaths.workspace}/.git,readonly`]
   }
 
-  const gitPointer = readTextFile(hostGit).trim()
-  const gitdirMatch = /^gitdir:\s*(.+)$/.exec(gitPointer)
-  if (gitdirMatch === null) return []
+  const validated = resolveValidatedWorktreeGitMetadata(hostGit, record.workspace.hostPath, {
+    pathExists,
+    readTextFile,
+    statType,
+    realPath,
+  })
+  if (validated === null) return []
 
-  const hostGitdir = path.resolve(record.workspace.hostPath, gitdirMatch[1]!.trim())
-  if (!pathExists(hostGitdir) || statType(hostGitdir) !== 'directory') return []
-
-  const mounts = [
+  return [
     `type=bind,source=${hostGit},target=${guestPaths.workspace}/.git,readonly`,
-    `type=bind,source=${hostGitdir},target=${hostGitdir},readonly`,
+    `type=bind,source=${validated.hostGitdir},target=${validated.hostGitdir},readonly`,
+    `type=bind,source=${validated.hostCommonDir},target=${validated.hostCommonDir},readonly`,
   ]
-
-  const commondirPath = path.join(hostGitdir, 'commondir')
-  if (!pathExists(commondirPath)) return mounts
-  if (statType(commondirPath) !== 'file') return []
-
-  const commonDir = readTextFile(commondirPath).trim()
-  if (commonDir.length === 0) return []
-
-  const hostCommonDir = path.resolve(hostGitdir, commonDir)
-  if (!pathExists(hostCommonDir) || statType(hostCommonDir) !== 'directory') return []
-
-  mounts.push(`type=bind,source=${hostCommonDir},target=${hostCommonDir},readonly`)
-  return mounts
 }

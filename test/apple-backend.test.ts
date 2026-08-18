@@ -60,16 +60,32 @@ test('git worktrees mount pointer, gitdir, and common dir read-only', () => {
   const hostGit = `${record.workspace.hostPath}/.git`
   const hostGitdir = '/repos/dsh.git/worktrees/demo'
   const hostCommonDir = '/repos/dsh.git'
+  const gitMetadataPaths = new Set([
+    hostGit,
+    hostGitdir,
+    `${hostGitdir}/gitdir`,
+    `${hostGitdir}/commondir`,
+    hostCommonDir,
+    `${hostCommonDir}/HEAD`,
+    `${hostCommonDir}/objects`,
+    `${hostCommonDir}/refs`,
+  ])
   const mounts = workspaceGitMetadataMounts(record, {
-    pathExists: (candidate) =>
-      [hostGit, hostGitdir, `${hostGitdir}/commondir`, hostCommonDir].includes(candidate),
-    statType: (candidate) =>
-      candidate === hostGit || candidate === `${hostGitdir}/commondir` ? 'file' : 'directory',
+    pathExists: (candidate) => gitMetadataPaths.has(candidate),
+    statType: (candidate) => {
+      if (candidate === hostGit || candidate.endsWith('/gitdir') || candidate.endsWith('/commondir')) {
+        return 'file'
+      }
+      if (candidate.endsWith('/HEAD')) return 'file'
+      return 'directory'
+    },
     readTextFile: (candidate) => {
       if (candidate === hostGit) return `gitdir: ${hostGitdir}\n`
+      if (candidate === `${hostGitdir}/gitdir`) return `${hostGit}\n`
       if (candidate === `${hostGitdir}/commondir`) return '../..\n'
       throw new Error(`unexpected read: ${candidate}`)
     },
+    realPath: (candidate) => candidate,
   })
   assert.deepEqual(mounts, [
     `type=bind,source=${hostGit},target=/workspace/.git,readonly`,
@@ -85,6 +101,7 @@ test('git worktree overmount fails closed for malformed pointers', () => {
       pathExists: () => true,
       statType: () => 'file',
       readTextFile: () => 'not-a-gitdir\n',
+      realPath: (candidate) => candidate,
     }),
     [],
   )
@@ -93,6 +110,110 @@ test('git worktree overmount fails closed for malformed pointers', () => {
       pathExists: (candidate) => candidate !== hostGit,
       statType: (candidate) => (candidate === hostGit ? 'file' : 'directory'),
       readTextFile: () => 'gitdir: /missing/worktree\n',
+      realPath: (candidate) => candidate,
+    }),
+    [],
+  )
+})
+
+test('git worktree overmount rejects arbitrary host paths', () => {
+  const hostGit = `${record.workspace.hostPath}/.git`
+  const sensitiveHostPath = '/etc'
+  assert.deepEqual(
+    workspaceGitMetadataMounts(record, {
+      pathExists: (candidate) => [hostGit, sensitiveHostPath].includes(candidate),
+      statType: (candidate) => (candidate === hostGit ? 'file' : 'directory'),
+      readTextFile: (candidate) => {
+        if (candidate === hostGit) return `gitdir: ${sensitiveHostPath}\n`
+        throw new Error(`unexpected read: ${candidate}`)
+      },
+      realPath: (candidate) => candidate,
+    }),
+    [],
+  )
+})
+
+test('git worktree overmount rejects traversal escapes without reciprocal validation', () => {
+  const hostGit = `${record.workspace.hostPath}/.git`
+  const escapedGitdir = '/repos/dsh.git/worktrees/evil'
+  assert.deepEqual(
+    workspaceGitMetadataMounts(record, {
+      pathExists: (candidate) =>
+        [hostGit, `${record.workspace.hostPath}/../../etc`, escapedGitdir].includes(candidate),
+      statType: (candidate) => (candidate === hostGit ? 'file' : 'directory'),
+      readTextFile: (candidate) => {
+        if (candidate === hostGit) return 'gitdir: ../../etc\n'
+        throw new Error(`unexpected read: ${candidate}`)
+      },
+      realPath: (candidate) => candidate,
+    }),
+    [],
+  )
+})
+
+test('git worktree overmount rejects mismatched reciprocal gitdir pointers', () => {
+  const hostGit = `${record.workspace.hostPath}/.git`
+  const hostGitdir = '/repos/dsh.git/worktrees/demo'
+  const hostCommonDir = '/repos/dsh.git'
+  const gitMetadataPaths = new Set([
+    hostGit,
+    hostGitdir,
+    `${hostGitdir}/gitdir`,
+    `${hostGitdir}/commondir`,
+    hostCommonDir,
+    `${hostCommonDir}/HEAD`,
+    `${hostCommonDir}/objects`,
+    `${hostCommonDir}/refs`,
+  ])
+  assert.deepEqual(
+    workspaceGitMetadataMounts(record, {
+      pathExists: (candidate) => gitMetadataPaths.has(candidate),
+      statType: (candidate) => {
+        if (candidate === hostGit || candidate.endsWith('/gitdir') || candidate.endsWith('/commondir')) {
+          return 'file'
+        }
+        if (candidate.endsWith('/HEAD')) return 'file'
+        return 'directory'
+      },
+      readTextFile: (candidate) => {
+        if (candidate === hostGit) return `gitdir: ${hostGitdir}\n`
+        if (candidate === `${hostGitdir}/gitdir`) return '/other/workspace/.git\n'
+        if (candidate === `${hostGitdir}/commondir`) return '../..\n'
+        throw new Error(`unexpected read: ${candidate}`)
+      },
+      realPath: (candidate) => candidate,
+    }),
+    [],
+  )
+})
+
+test('git worktree overmount rejects commondir targets without git metadata structure', () => {
+  const hostGit = `${record.workspace.hostPath}/.git`
+  const hostGitdir = '/repos/dsh.git/worktrees/demo'
+  const hostCommonDir = '/Users/attacker/private'
+  const gitMetadataPaths = new Set([
+    hostGit,
+    hostGitdir,
+    `${hostGitdir}/gitdir`,
+    `${hostGitdir}/commondir`,
+    hostCommonDir,
+  ])
+  assert.deepEqual(
+    workspaceGitMetadataMounts(record, {
+      pathExists: (candidate) => gitMetadataPaths.has(candidate),
+      statType: (candidate) => {
+        if (candidate === hostGit || candidate.endsWith('/gitdir') || candidate.endsWith('/commondir')) {
+          return 'file'
+        }
+        return 'directory'
+      },
+      readTextFile: (candidate) => {
+        if (candidate === hostGit) return `gitdir: ${hostGitdir}\n`
+        if (candidate === `${hostGitdir}/gitdir`) return `${hostGit}\n`
+        if (candidate === `${hostGitdir}/commondir`) return '../../../../../Users/attacker/private\n'
+        throw new Error(`unexpected read: ${candidate}`)
+      },
+      realPath: (candidate) => candidate,
     }),
     [],
   )
