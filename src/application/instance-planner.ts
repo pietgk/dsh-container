@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto'
+import { homedir } from 'node:os'
 import * as path from 'node:path'
 import {
   acceptedAudit,
@@ -107,9 +108,14 @@ export function resolveManagedWorkspace(value: string): string {
 }
 
 export function resolveManagedWorkspaceRoot(
+  packageRoot: string = projectRoot,
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): string {
-  return path.resolve(
-    environment.DSH_CONTAINER_WORKSPACE_ROOT ?? path.join(projectRoot, 'workspaces'),
-  )
+  const home = environment.HOME ?? homedir()
+  const root =
+    environment.DSH_CONTAINER_WORKSPACE_ROOT ??
+    (packageRoot.startsWith('/nix/store/')
+      ? path.join(home, '.local/share/dsh-container/workspaces')
+      : path.join(packageRoot, 'workspaces'))
+  return path.resolve(root)
 }

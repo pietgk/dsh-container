@@ -1,3 +1,4 @@
+import { homedir } from 'node:os'
 import * as path from 'node:path'
 import { projectRoot } from '../constants.js'
 import { parseInstanceName } from '../domain/resource-names.js'
@@ -9,10 +10,19 @@ export interface ManagerPaths {
   readonly logs: string
 }
 
+export function defaultManagerRoot(
+  packageRoot: string = projectRoot,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): string {
+  const home = environment.HOME ?? homedir()
+  if (packageRoot.startsWith('/nix/store/')) {
+    return path.join(home, '.local/state/dsh-container/manager')
+  }
+  return path.join(packageRoot, '.state/manager')
+}
+
 export function resolveManagerPaths(override?: string): ManagerPaths {
-  const root = path.resolve(
-    override ?? process.env.DSH_CONTAINER_HOME ?? path.join(projectRoot, '.state/manager'),
-  )
+  const root = path.resolve(override ?? process.env.DSH_CONTAINER_HOME ?? defaultManagerRoot())
   return {
     root,
     instances: path.join(root, 'instances'),

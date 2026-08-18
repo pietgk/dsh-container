@@ -35,9 +35,18 @@ test('workspace must remain beneath the manager-owned workspace root', () => {
 
 test('Nix-installed manager can receive its managed workspace root from the environment', () => {
   assert.equal(
-    resolveManagedWorkspaceRoot({
+    resolveManagedWorkspaceRoot('/nix/store/hash-dsh-container/lib/dsh-container', {
       DSH_CONTAINER_WORKSPACE_ROOT: '/Users/tester/ws/dsh/workspaces',
     }),
     '/Users/tester/ws/dsh/workspaces',
+  )
+})
+
+test('Nix-installed manager defaults managed workspaces to a writable per-user root', () => {
+  assert.equal(
+    resolveManagedWorkspaceRoot('/nix/store/hash-dsh-container/lib/dsh-container', {
+      HOME: '/Users/tester',
+    }),
+    '/Users/tester/.local/share/dsh-container/workspaces',
   )
 })

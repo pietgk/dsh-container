@@ -1,7 +1,7 @@
 import * as assert from 'node:assert/strict'
 import { test } from 'node:test'
 import * as path from 'node:path'
-import { AppleBackend, workspaceGitMetadataMount } from '../src/backends/apple/apple-backend.js'
+import { AppleBackend, workspaceGitMetadataMounts } from '../src/backends/apple/apple-backend.js'
 import { planInstance } from '../src/application/instance-planner.js'
 import { projectRoot } from '../src/constants.js'
 
@@ -47,12 +47,54 @@ test('Apple delete commands contain exact targets and no broad selectors', () =>
 
 test('existing host Git metadata receives an explicit read-only overmount', () => {
   assert.equal(
-    workspaceGitMetadataMount(record, () => true),
+    workspaceGitMetadataMounts(record, {
+      pathExists: () => true,
+      statType: () => 'directory',
+    }).join('\n'),
     `type=bind,source=${record.workspace.hostPath}/.git,target=/workspace/.git,readonly`,
   )
-  assert.equal(
-    workspaceGitMetadataMount(record, () => false),
-    null,
+  assert.deepEqual(workspaceGitMetadataMounts(record, { pathExists: () => false }), [])
+})
+
+test('git worktrees mount pointer, gitdir, and common dir read-only', () => {
+  const hostGit = `${record.workspace.hostPath}/.git`
+  const hostGitdir = '/repos/dsh.git/worktrees/demo'
+  const hostCommonDir = '/repos/dsh.git'
+  const mounts = workspaceGitMetadataMounts(record, {
+    pathExists: (candidate) =>
+      [hostGit, hostGitdir, `${hostGitdir}/commondir`, hostCommonDir].includes(candidate),
+    statType: (candidate) =>
+      candidate === hostGit || candidate === `${hostGitdir}/commondir` ? 'file' : 'directory',
+    readTextFile: (candidate) => {
+      if (candidate === hostGit) return `gitdir: ${hostGitdir}\n`
+      if (candidate === `${hostGitdir}/commondir`) return '../..\n'
+      throw new Error(`unexpected read: ${candidate}`)
+    },
+  })
+  assert.deepEqual(mounts, [
+    `type=bind,source=${hostGit},target=/workspace/.git,readonly`,
+    `type=bind,source=${hostGitdir},target=${hostGitdir},readonly`,
+    `type=bind,source=${hostCommonDir},target=${hostCommonDir},readonly`,
+  ])
+})
+
+test('git worktree overmount fails closed for malformed pointers', () => {
+  const hostGit = `${record.workspace.hostPath}/.git`
+  assert.deepEqual(
+    workspaceGitMetadataMounts(record, {
+      pathExists: () => true,
+      statType: () => 'file',
+      readTextFile: () => 'not-a-gitdir\n',
+    }),
+    [],
+  )
+  assert.deepEqual(
+    workspaceGitMetadataMounts(record, {
+      pathExists: (candidate) => candidate !== hostGit,
+      statType: (candidate) => (candidate === hostGit ? 'file' : 'directory'),
+      readTextFile: () => 'gitdir: /missing/worktree\n',
+    }),
+    [],
   )
 })
 

@@ -5,6 +5,7 @@ import * as path from 'node:path'
 import { afterEach, test } from 'node:test'
 import { planInstance } from '../src/application/instance-planner.js'
 import {
+  defaultManagerRoot,
   resolveManagerPaths,
   instanceJournalPath,
   instanceRecordPath,
@@ -53,4 +54,13 @@ test('failure journal redacts secret values before persistence', async () => {
   assert.ok(contents.includes('[REDACTED]'))
   assert.ok(!contents.includes('sk-abcdefghijklmnop'))
   assert.equal((await stat(instanceJournalPath(paths, 'demo'))).mode & 0o777, 0o600)
+})
+
+test('Nix-installed manager defaults runtime state to a writable per-user root', () => {
+  assert.equal(
+    defaultManagerRoot('/nix/store/hash-dsh-container/lib/dsh-container', {
+      HOME: '/Users/tester',
+    }),
+    '/Users/tester/.local/state/dsh-container/manager',
+  )
 })
