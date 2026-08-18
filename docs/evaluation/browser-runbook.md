@@ -30,7 +30,7 @@ The opt-in live-model scenario mutates the selected session and consumes model
 tokens. It never configures or reads a key:
 
 ```text
-DSH_E2E_SESSION_TITLE="controlled session" pnpm e2e:live
+DSH_E2E_SESSION_TITLE="Inspect workspace app and report status" pnpm e2e:live
 ```
 
 Screenshot baselines must be produced with the pinned Playwright Chromium.

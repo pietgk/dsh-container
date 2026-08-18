@@ -52,7 +52,7 @@
           mkdir -p "$out/lib/dsh-container/spikes/phase-0/apple-kernel" "$out/bin"
           cp -R dist node_modules package.json "$out/lib/dsh-container/"
           cp ${landlockKernel} \
-            "$out/lib/dsh-container/spikes/phase-0/apple-kernel/"
+            "$out/lib/dsh-container/spikes/phase-0/apple-kernel/vmlinux-arm64"
           makeWrapper ${pkgs.nodejs_24}/bin/node "$out/bin/dsh-container" \
             --add-flags "$out/lib/dsh-container/dist/cli.js"
           runHook postInstall

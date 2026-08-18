@@ -73,7 +73,7 @@ provider key and rotate it after risky work.
 ```text
 pnpm exec playwright install chromium
 DSH_E2E_BASE_URL=http://127.0.0.1:30081 \
-DSH_E2E_SESSION_TITLE="controlled session" \
+DSH_E2E_SESSION_TITLE="Inspect workspace app and report status" \
 pnpm e2e
 ```
 
