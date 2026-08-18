@@ -35,7 +35,9 @@ test('workspace must remain beneath the manager-owned workspace root', () => {
 
 test('Nix-installed manager can receive its managed workspace root from the environment', () => {
   assert.equal(
-    resolveManagedWorkspaceRoot({ DSH_CONTAINER_WORKSPACE_ROOT: '/Users/tester/ws/dsh/workspaces' }),
+    resolveManagedWorkspaceRoot({
+      DSH_CONTAINER_WORKSPACE_ROOT: '/Users/tester/ws/dsh/workspaces',
+    }),
     '/Users/tester/ws/dsh/workspaces',
   )
 })
