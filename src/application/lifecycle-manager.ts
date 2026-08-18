@@ -124,6 +124,9 @@ export class LifecycleManager {
 
   async start(input: StartInstanceInput): Promise<InstanceRecord> {
     const existing = await this.#requireRecord(input.name)
+    if (existing.lifecycle.observed === 'uninitialized') {
+      throw new Error('instance initialization is incomplete; run init first')
+    }
     if (
       existing.security.liveEgressAcknowledgedAt === null ||
       existing.security.bindRiskAcknowledgedAt === null
