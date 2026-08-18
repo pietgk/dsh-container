@@ -365,18 +365,24 @@ export function workspaceGitMetadataMounts(
       return 'file'
     })
   const realPath = deps.realPath ?? ((candidate: string) => realpathSync(candidate))
-  const canonicalWorkspace = canonicalPath(record.workspace.hostPath, realPath)
-  if (canonicalWorkspace === null) return []
-
   const hostGit = path.join(record.workspace.hostPath, '.git')
   if (!pathExists(hostGit)) return []
 
+  const canonicalWorkspace = canonicalPath(record.workspace.hostPath, realPath)
+  if (canonicalWorkspace === null) {
+    throw new Error(`workspace path cannot be resolved safely: ${record.workspace.hostPath}`)
+  }
+
   const gitEntryType = lstatType(hostGit)
-  if (gitEntryType !== 'directory') return []
+  if (gitEntryType !== 'directory') {
+    throw new Error(
+      `workspace .git must be a real directory contained in the workspace; ${gitEntryType} entries and linked worktrees are unsupported in version 1`,
+    )
+  }
 
   const canonicalHostGit = canonicalPath(hostGit, realPath)
   if (canonicalHostGit === null || !isPathContainedIn(canonicalHostGit, canonicalWorkspace)) {
-    return []
+    throw new Error('workspace .git resolves outside the workspace and cannot be mounted safely')
   }
 
   return [`type=bind,source=${hostGit},target=${guestPaths.workspace}/.git,readonly`]

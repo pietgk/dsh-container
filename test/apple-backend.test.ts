@@ -61,81 +61,88 @@ test('linked external git worktrees are unsupported in version 1', () => {
   const hostGit = `${record.workspace.hostPath}/.git`
   const hostGitdir = '/repos/dsh.git/worktrees/demo'
   const hostCommonDir = '/repos/dsh.git'
-  assert.deepEqual(
-    workspaceGitMetadataMounts(record, {
-      pathExists: (candidate) =>
-        [hostGit, hostGitdir, hostCommonDir].some((entry) => candidate.startsWith(entry)),
-      lstatType: (candidate) => (candidate === hostGit ? 'file' : 'directory'),
-      realPath: (candidate) => candidate,
-    }),
-    [],
+  assert.throws(
+    () =>
+      workspaceGitMetadataMounts(record, {
+        pathExists: (candidate) =>
+          [hostGit, hostGitdir, hostCommonDir].some((entry) => candidate.startsWith(entry)),
+        lstatType: (candidate) => (candidate === hostGit ? 'file' : 'directory'),
+        realPath: (candidate) => candidate,
+      }),
+    /linked worktrees are unsupported/,
   )
 })
 
 test('git overmount rejects symlinked .git paths', () => {
-  assert.deepEqual(
-    workspaceGitMetadataMounts(record, {
-      pathExists: () => true,
-      lstatType: () => 'symlink',
-      realPath: (candidate) => candidate,
-    }),
-    [],
+  assert.throws(
+    () =>
+      workspaceGitMetadataMounts(record, {
+        pathExists: () => true,
+        lstatType: () => 'symlink',
+        realPath: (candidate) => candidate,
+      }),
+    /symlink entries/,
   )
 })
 
 test('git overmount rejects .git pointer files', () => {
-  assert.deepEqual(
-    workspaceGitMetadataMounts(record, {
-      pathExists: () => true,
-      lstatType: () => 'file',
-      realPath: (candidate) => candidate,
-    }),
-    [],
+  assert.throws(
+    () =>
+      workspaceGitMetadataMounts(record, {
+        pathExists: () => true,
+        lstatType: () => 'file',
+        realPath: (candidate) => candidate,
+      }),
+    /linked worktrees are unsupported/,
   )
 })
 
 test('git overmount rejects .git directories outside the workspace root', () => {
   const hostGit = `${record.workspace.hostPath}/.git`
-  assert.deepEqual(
-    workspaceGitMetadataMounts(record, {
-      pathExists: () => true,
-      lstatType: () => 'directory',
-      realPath: (candidate) => (candidate === hostGit ? '/etc/.git' : candidate),
-    }),
-    [],
+  assert.throws(
+    () =>
+      workspaceGitMetadataMounts(record, {
+        pathExists: () => true,
+        lstatType: () => 'directory',
+        realPath: (candidate) => (candidate === hostGit ? '/etc/.git' : candidate),
+      }),
+    /resolves outside the workspace/,
   )
 })
 
 test('git overmount rejects arbitrary host paths in pointer files', () => {
-  assert.deepEqual(
-    workspaceGitMetadataMounts(record, {
-      pathExists: () => true,
-      lstatType: () => 'file',
-      realPath: (candidate) => candidate,
-    }),
-    [],
+  assert.throws(
+    () =>
+      workspaceGitMetadataMounts(record, {
+        pathExists: () => true,
+        lstatType: () => 'file',
+        realPath: (candidate) => candidate,
+      }),
+    /linked worktrees are unsupported/,
   )
 })
 
 test('git overmount rejects traversal escapes via pointer files', () => {
-  assert.deepEqual(
-    workspaceGitMetadataMounts(record, {
-      pathExists: () => true,
-      lstatType: () => 'file',
-      realPath: (candidate) => candidate,
-    }),
-    [],
+  assert.throws(
+    () =>
+      workspaceGitMetadataMounts(record, {
+        pathExists: () => true,
+        lstatType: () => 'file',
+        realPath: (candidate) => candidate,
+      }),
+    /linked worktrees are unsupported/,
   )
 })
 
 test('git overmount rejects unrelated commondir targets via pointer files', () => {
-  assert.deepEqual(
-    workspaceGitMetadataMounts(record, {
-      pathExists: () => true,
-      lstatType: () => 'file',
-      realPath: (candidate) => candidate,
-    }),
-    [],
+  assert.throws(
+    () =>
+      workspaceGitMetadataMounts(record, {
+        pathExists: () => true,
+        lstatType: () => 'file',
+        realPath: (candidate) => candidate,
+      }),
+    /linked worktrees are unsupported/,
   )
 })
 
