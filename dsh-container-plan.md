@@ -348,7 +348,7 @@ Version 1 supports bind mode only.
 - Mount only that exact directory into the guest.
 - Do not mount the host home, workspace parent, or another broad parent directory.
 - Ensure Git metadata is read-only from inside the container, preferably with an explicit overmount.
-- Version 1 mounts only a workspace-contained `.git` directory. Symlinked `.git` paths, `.git` pointer files, and linked external worktrees are unsupported because they would require mounting host Git metadata outside the bound workspace.
+- Version 1 mounts only a workspace-contained `.git` directory. Symlinked `.git` paths, `.git` pointer files, linked external worktrees, and unresolvable workspace paths are unsupported because they would require mounting host Git metadata outside the bound workspace. Container creation must fail closed with an explicit error instead of proceeding without the read-only overmount.
 - Open the project in Zed Restricted Mode until the user trusts it.
 - Prove the selected non-root guest UID/GID can write the bind workspace without making it broadly writable on the Mac.
 - Container edits should appear immediately in Zed.

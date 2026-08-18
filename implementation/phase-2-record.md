@@ -52,9 +52,10 @@ revision-specific and evaluation-only.
 - Default `delete` removes only the disposable container and preserves the
   workspace, state, cache, and network.
 - An existing workspace `.git` directory receives an explicit read-only bind
-  overmount. Linked external git worktrees are unsupported in version 1 because
-  their metadata lives outside the bound workspace. Phase 0 proved this behavior
-  live; Phase 2 command construction has a dedicated regression test.
+  overmount. Linked external git worktrees, symlinked `.git` paths, pointer
+  files, and externally resolved metadata are unsupported in version 1; container
+  creation fails closed with an explicit error. Phase 0 proved read-only
+  overmount behavior live; command construction has a dedicated regression test.
 
 ## Live acceptance evidence
 
