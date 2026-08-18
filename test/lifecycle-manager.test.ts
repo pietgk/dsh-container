@@ -22,6 +22,39 @@ afterEach(async () => {
   for (const root of temporaryRoots.splice(0)) await rm(root, { recursive: true, force: true })
 })
 
+async function writePartiallyInitializedRecord(root: string): Promise<{
+  paths: ReturnType<typeof resolveManagerPaths>
+  store: InstanceStore
+  manager: LifecycleManager
+}> {
+  const paths = resolveManagerPaths(root)
+  const store = new InstanceStore(paths)
+  const record = planInstance({
+    name: 'demo',
+    workspace: path.join(projectRoot, 'workspaces/demo'),
+    id: '0123456789abcdef0123456789abcdef',
+    now: new Date('2026-08-17T21:00:00.000Z'),
+  })
+  await store.write(
+    parseInstanceRecord({
+      ...record,
+      security: {
+        ...record.security,
+        liveEgressAcknowledgedAt: '2026-08-17T21:00:00.000Z',
+        bindRiskAcknowledgedAt: '2026-08-17T21:00:00.000Z',
+      },
+      lifecycle: { ...record.lifecycle, observed: 'uninitialized' },
+    }),
+  )
+
+  const runner: CommandRunner = {
+    run: async () => {
+      throw new Error('lifecycle must not invoke container commands for uninitialized instances')
+    },
+  }
+  return { paths, store, manager: new LifecycleManager(paths, new AppleBackend(runner), runner) }
+}
+
 test('guest network addresses extracts IPv4 and IPv6 without CIDR suffixes', () => {
   assert.deepEqual(
     guestNetworkAddresses([
@@ -48,33 +81,34 @@ test('guest network addresses fails closed on unknown inspect shapes', () => {
 test('start rejects uninitialized instances so init gates cannot be bypassed', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'dsh-container-start-guard-'))
   temporaryRoots.push(root)
-  const paths = resolveManagerPaths(root)
-  const store = new InstanceStore(paths)
-  const record = planInstance({
-    name: 'demo',
-    workspace: path.join(projectRoot, 'workspaces/demo'),
-    id: '0123456789abcdef0123456789abcdef',
-    now: new Date('2026-08-17T21:00:00.000Z'),
-  })
-  await store.write(
-    parseInstanceRecord({
-      ...record,
-      security: {
-        ...record.security,
-        liveEgressAcknowledgedAt: '2026-08-17T21:00:00.000Z',
-        bindRiskAcknowledgedAt: '2026-08-17T21:00:00.000Z',
-      },
-      lifecycle: { ...record.lifecycle, observed: 'uninitialized' },
-    }),
+  const { manager } = await writePartiallyInitializedRecord(root)
+
+  await assert.rejects(
+    () => manager.start({ name: 'demo', port: 30081 }),
+    /initialization is incomplete/,
   )
+})
 
-  const runner: CommandRunner = {
-    run: async () => {
-      throw new Error('start must not invoke container commands for uninitialized instances')
-    },
-  }
-  const manager = new LifecycleManager(paths, new AppleBackend(runner), runner)
+test('stop rejects uninitialized instances and does not enable start bypass', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'dsh-container-stop-guard-'))
+  temporaryRoots.push(root)
+  const { manager, store } = await writePartiallyInitializedRecord(root)
 
+  await assert.rejects(() => manager.stop('demo'), /initialization is incomplete/)
+  assert.equal((await store.read('demo'))?.lifecycle.observed, 'uninitialized')
+  await assert.rejects(
+    () => manager.start({ name: 'demo', port: 30081 }),
+    /initialization is incomplete/,
+  )
+})
+
+test('deleteContainer rejects uninitialized instances and does not enable start bypass', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'dsh-container-delete-guard-'))
+  temporaryRoots.push(root)
+  const { manager, store } = await writePartiallyInitializedRecord(root)
+
+  await assert.rejects(() => manager.deleteContainer('demo'), /initialization is incomplete/)
+  assert.equal((await store.read('demo'))?.lifecycle.observed, 'uninitialized')
   await assert.rejects(
     () => manager.start({ name: 'demo', port: 30081 }),
     /initialization is incomplete/,

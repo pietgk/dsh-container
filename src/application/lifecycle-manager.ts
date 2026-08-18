@@ -124,9 +124,7 @@ export class LifecycleManager {
 
   async start(input: StartInstanceInput): Promise<InstanceRecord> {
     const existing = await this.#requireRecord(input.name)
-    if (existing.lifecycle.observed === 'uninitialized') {
-      throw new Error('instance initialization is incomplete; run init first')
-    }
+    this.#requireInitCompleted(existing)
     if (
       existing.security.liveEgressAcknowledgedAt === null ||
       existing.security.bindRiskAcknowledgedAt === null
@@ -233,6 +231,7 @@ export class LifecycleManager {
 
   async stop(name: string): Promise<InstanceRecord> {
     const record = await this.#requireRecord(name)
+    this.#requireInitCompleted(record)
     const inspect = await this.#runner.run(this.#backend.inspectCommand(record))
     if (inspect.exitCode === 0) {
       const stop = await this.#runner.run(this.#backend.stopCommand(record))
@@ -280,15 +279,17 @@ export class LifecycleManager {
   }
 
   async deleteContainer(name: string): Promise<InstanceRecord> {
-    const record = await this.stop(name)
-    const deletion = await this.#runner.run(this.#backend.deleteContainerCommand(record))
+    const record = await this.#requireRecord(name)
+    this.#requireInitCompleted(record)
+    const stopped = await this.stop(name)
+    const deletion = await this.#runner.run(this.#backend.deleteContainerCommand(stopped))
     if (deletion.exitCode !== 0 && !deletion.stderr.includes('not found')) {
       throw new Error(`container deletion failed: ${deletion.stderr.trim()}`)
     }
     const deleted = parseInstanceRecord({
-      ...record,
+      ...stopped,
       updatedAt: new Date().toISOString(),
-      lifecycle: { ...record.lifecycle, observed: 'missing' },
+      lifecycle: { ...stopped.lifecycle, observed: 'missing' },
     })
     await this.#store.write(deleted)
     return deleted
@@ -371,6 +372,12 @@ export class LifecycleManager {
     const record = await this.#store.read(name)
     if (record === null) throw new Error(`instance not found: ${name}`)
     return record
+  }
+
+  #requireInitCompleted(record: InstanceRecord): void {
+    if (record.lifecycle.observed === 'uninitialized') {
+      throw new Error('instance initialization is incomplete; run init first')
+    }
   }
 
   async #exists(command: Parameters<CommandRunner['run']>[0] | undefined): Promise<boolean> {
